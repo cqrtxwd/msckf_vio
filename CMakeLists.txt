@@ -24,6 +24,11 @@ add_library(
   src/ultimate_msckf_vio/feature_tracker.cpp
 )
 
+add_library(
+  msckf_estimator_lib
+  src/ultimate_msckf_vio/msckf_estimator.cpp
+)
+
 catkin_package()
 
 #add_executable(talker_test src/${PROJECT_NAME}/talker_test.cpp)
@@ -36,5 +41,7 @@ add_executable(featrue_tracker_node src/${PROJECT_NAME}/feature_tracker_node.cpp
 target_link_libraries(featrue_tracker_node ${catkin_LIBRARIES} ${OpenCV_LIBS} featrue_tracker_lib)
 target_link_libraries(featrue_tracker_node PUBLIC ${GLOG_LIBRARY})
 
+add_executable(msckf_estimator_node src/${PROJECT_NAME}/msckf_estimator_node.cpp)
+target_link_libraries(msckf_estimator_node ${catkin_LIBRARIES} msckf_estimator_lib)
 
 
