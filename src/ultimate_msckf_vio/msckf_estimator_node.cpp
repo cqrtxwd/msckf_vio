@@ -4,7 +4,7 @@
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include "std_msgs/Bool.h"
-#include "ultimate_msckf_vio/msckf_estimator.h"
+#include "ultimate_msckf_vio/data_manager.h"
 #include <mutex>
 #include <deque>
 #include <thread>
@@ -13,25 +13,25 @@ using std::mutex;
 using std::deque;
 
 
-ultimate_msckf_vio::MsckfEstimator msckf_estimator;
+ultimate_msckf_vio::DataManager data_manager;
 
 void ImuCallback(const sensor_msgs::ImuConstPtr& imu_msg) {
   // ROS_INFO_STREAM("receve imu");
-  msckf_estimator.ReceiveImuMeasurement(imu_msg);
+  data_manager.ReceiveImuMeasurement(imu_msg);
 }
 
 void FeaturesCallback(const sensor_msgs::PointCloudConstPtr& image) {
   // ROS_INFO_STREAM("receve features");
-  msckf_estimator.ReceiveImage(image);
+  data_manager.ReceiveImage(image);
 }
 
 void RestartCallback(const std_msgs::BoolConstPtr& restart_msg) {
   ROS_INFO_STREAM("receve call back");
 }
 
-void EstimatorLoop(){
+void ProcessLoop(){
   while(true) {
-    msckf_estimator.Process();
+    data_manager.Process();
   }
 }
 
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
       n.subscribe("/feature_tracker/restart", 2000, RestartCallback);
   ros::Subscriber sub_imu = n.subscribe("imu0", 2000, ImuCallback);
 
-  std::thread estimator_thread{EstimatorLoop};
+  std::thread process_thread{ProcessLoop};
 
   ros::spin();
 
