@@ -2,6 +2,16 @@
 
 namespace ultimate_msckf_vio {
 
+void MsckfEstimator::Process() {
+  std::unique_lock<std::mutex> lk(sensor_buf_mutex_);
+  process_thread_.wait(lk);
+  auto measurment = GetSensorMeasurement();
+  lk.unlock();
+  if (!ProcessMeasurement(measurment)) {
+    ROS_INFO_STREAM("ProcessMeasurement failed !!!");
+  }
+}
+
 bool MsckfEstimator::ReceiveImage(
     const sensor_msgs::PointCloudConstPtr& image) {
   sensor_buf_mutex_.lock();
@@ -23,13 +33,10 @@ bool MsckfEstimator::ReceiveImuMeasurement(
     sensor_buf_mutex_.unlock();
     return false;
   }
-  // ROS_INFO("ready to get measurement");
   if (imu_buf_.back()->header.stamp.toSec() >
       images_buf_.front()->header.stamp.toSec()) {
-    auto measurement = GetSensorMeasurement();
-    // check if imu deque is aligned with image time
-    ROS_ASSERT(measurement.imu_measurements.back()->header.stamp.toSec() ==
-               measurement.image->header.stamp.toSec());
+    // start estimator_process thread
+    process_thread_.notify_one();
   }
   sensor_buf_mutex_.unlock();
   return true;
@@ -88,21 +95,20 @@ ImuConstPtr MsckfEstimator::InterpolateImu(const double& interpolate_time,
       forw_imu->angular_velocity.x, forw_imu->angular_velocity.y,
       forw_imu->angular_velocity.z;
   double alpha = (interpolate_time - pre_time) / (forw_time - pre_time);
-  ROS_INFO_STREAM("pre_time is: " << pre_time;);
-  ROS_INFO_STREAM("forw_time is: " << forw_time;);
-  ROS_INFO_STREAM("interpolate_time is: " << interpolate_time;);
-  ROS_INFO_STREAM("alpha is: " << alpha;);
+  // ROS_INFO_STREAM("pre_time is: " << pre_time;);
+  // ROS_INFO_STREAM("forw_time is: " << forw_time;);
+  // ROS_INFO_STREAM("interpolate_time is: " << interpolate_time;);
+  // ROS_INFO_STREAM("alpha is: " << alpha;);
   if (alpha > 1 || alpha < 0) {
     ROS_FATAL_STREAM("InterpolateImu alpha wrong!!! alpha is: " << alpha;);
   }
   Matrix<double, 6, 1> result_accel_gyro;
   result_accel_gyro = (1 - alpha) * pre_accel_gyro + alpha * forw_accel_gyro;
-  sensor_msgs::Imu result_imu;
 
+  sensor_msgs::Imu result_imu;
   result_imu.linear_acceleration.x = result_accel_gyro(0, 0);
   result_imu.linear_acceleration.y = result_accel_gyro(1, 0);
   result_imu.linear_acceleration.z = result_accel_gyro(2, 0);
-
   result_imu.angular_velocity.x = result_accel_gyro(3, 0);
   result_imu.angular_velocity.y = result_accel_gyro(4, 0);
   result_imu.angular_velocity.z = result_accel_gyro(5, 0);
@@ -115,7 +121,8 @@ ImuConstPtr MsckfEstimator::InterpolateImu(const double& interpolate_time,
 
 bool MsckfEstimator::ProcessMeasurement(
     const SensorMeasurement& sensor_measurement) {
-      return true;
-    }
+  ROS_INFO_STREAM("ProcessMeasurement calls";);
+  return true;
+}
 
 }  // namespace ultimate_msckf_vio

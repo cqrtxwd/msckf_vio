@@ -7,15 +7,11 @@
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include <mutex>
 #include <deque>
+#include <thread>
 
 using std::mutex;
 using std::deque;
 
-
-
-mutex sensor_buf_mutex;
-deque<sensor_msgs::ImuConstPtr> imu_buf;
-deque<sensor_msgs::PointCloudConstPtr> images_buf;
 
 ultimate_msckf_vio::MsckfEstimator msckf_estimator;
 
@@ -33,6 +29,12 @@ void RestartCallback(const std_msgs::BoolConstPtr& restart_msg) {
   ROS_INFO_STREAM("receve call back");
 }
 
+void EstimatorLoop(){
+  while(true) {
+    msckf_estimator.Process();
+  }
+}
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "msckf_estimator");
   ros::NodeHandle n;
@@ -44,6 +46,8 @@ int main(int argc, char** argv) {
   ros::Subscriber sub_restart =
       n.subscribe("/feature_tracker/restart", 2000, RestartCallback);
   ros::Subscriber sub_imu = n.subscribe("imu0", 2000, ImuCallback);
+
+  std::thread estimator_thread{EstimatorLoop};
 
   ros::spin();
 

@@ -8,6 +8,7 @@
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
+#include <condition_variable>
 
 namespace ultimate_msckf_vio {
 using Eigen::Matrix;
@@ -37,6 +38,8 @@ class MsckfEstimator {
  public:
   MsckfEstimator() : cur_time_(0) {}
 
+  void Process();
+
   bool ReceiveImage(const sensor_msgs::PointCloudConstPtr& image);
 
   bool ReceiveImuMeasurement(const sensor_msgs::ImuConstPtr& imu_msg);
@@ -45,6 +48,7 @@ class MsckfEstimator {
 
   bool ProcessMeasurement(const SensorMeasurement&);
 
+
  private:
   ImuConstPtr InterpolateImu(const double&, const ImuConstPtr&,
                              const ImuConstPtr&);
@@ -52,8 +56,8 @@ class MsckfEstimator {
   double cur_time_;
   mutex sensor_buf_mutex_;
   deque<sensor_msgs::ImuConstPtr> imu_buf_;  // front is the oldest data
-  deque<sensor_msgs::PointCloudConstPtr>
-      images_buf_;  // front is the oldest data
+  deque<sensor_msgs::PointCloudConstPtr> images_buf_;  // front is the oldest
+  std::condition_variable process_thread_;
 };
 
 }  // namespace ultimate_msckf_vio
