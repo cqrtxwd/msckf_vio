@@ -12,19 +12,47 @@ using std::vector;
 
 
 template <typename Scalar>
-class InertialState {
+class ImuState {
  public:
-  InertialState() {}
+  ImuState() {}
 
-  Quaternion<Scalar> I_q_G;
+  Quaternion<Scalar> I_q_G() {
+    return I_q_G_;
+  }
 
-  Scalar bg;
+  Matrix<Scalar, 3, 1> bg() {
+    return bg_;
+  }
 
-  Matrix<Scalar, 3, 1> G_v_I;
+  Matrix<Scalar, 3, 1> G_v_I() {
+    return G_v_I_;
+  }
 
-  Scalar ba;
+  Matrix<Scalar, 3, 1> ba() {
+    return ba_;
+  }
 
-  Matrix<Scalar, 3, 1> G_p_I;
+  Matrix<Scalar, 3, 1> G_p_I() {
+    return G_p_I_;
+  }
+
+  int StateSize() {
+    return 16;
+  }
+  int ErrorStateSize() {
+    return 15;
+  }
+
+ private:
+  Quaternion<Scalar> I_q_G_;
+
+  Matrix<Scalar, 3, 1> bg_;
+
+  Matrix<Scalar, 3, 1> G_v_I_;
+
+  Matrix<Scalar, 3, 1> ba_;
+
+  Matrix<Scalar, 3, 1> G_p_I_;
 
 };
 
@@ -33,6 +61,13 @@ class CalibrationState {
  public:
   Quaternion<Scalar> I_q_G;
   Matrix<Scalar, 3, 1> G_p_I;
+
+  int StateSize(){
+    return 7;
+  }
+  int ErrorStateSize() {
+    return 6;
+  }
 };
 
 template <typename Scalar>
@@ -40,22 +75,45 @@ class KeyFrameState {
  public:
   Quaternion<Scalar> I_q_G;
   Matrix<Scalar, 3, 1> G_p_I;
+
+  int StateSize() {
+    return 7;
+  }
+  int ErrorStateSize() {
+    return 6;
+  }
 };
 
 template <typename Scalar>
 class EkfState {
  public:
-  EkfState():last_update_time_(0) {}
+  EkfState(): last_update_time_(0) {}
 
-  InertialState<Scalar> inertial_state;
+  ImuState<Scalar> imu_state;
+
   CalibrationState<Scalar> calibration_state;
-  KeyFrameState<Scalar> key_frame_state;
 
-  vector<Matrix<Scalar, 3, 1>> land_marks;
+  vector<KeyFrameState<Scalar>> keyframe_states;
+
+  vector<Matrix<Scalar, 3, 1>> landmarks;
+
+  Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> covarience;
 
   void ClearState();
 
+  int StateSize() {
+    return imu_state.StateSize()
+        + calibration_state.StateSize()
+        + keyframe_states.size() * 7
+        + landmarks.size() * 3;
+  }
 
+  int ErrorStateSize() {
+    return imu_state.ErrorStateSize()
+        + calibration_state.ErrorStateSize()
+        + keyframe_states.size() * 6
+        + landmarks.size() * 3;
+  }
 
  private:
    double last_update_time_;

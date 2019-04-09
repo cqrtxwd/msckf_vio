@@ -11,8 +11,10 @@
 #include <condition_variable>
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
+#include "ultimate_msckf_vio/utility/timer.h"
 
 namespace ultimate_msckf_vio {
+
 using Eigen::Matrix;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
