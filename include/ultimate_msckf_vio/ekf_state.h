@@ -11,11 +11,18 @@ using Eigen::Quaternion;
 using Eigen::Vector3d;
 using std::vector;
 
-constexpr int kQIndex = 0;
-constexpr int kBgIndex = 4 + kQIndex;
-constexpr int kVIndex = 3 + kBgIndex;
-constexpr int kBaIndex = 3 + kVIndex;
-constexpr int kPIndex = 3 + kBaIndex;
+constexpr int kQStateIndex = 0;
+constexpr int kBgStateIndex = 4 + kQStateIndex;
+constexpr int kVStateIndex = 3 + kBgStateIndex;
+constexpr int kBaStateIndex = 3 + kVStateIndex;
+constexpr int kPStateIndex = 3 + kBaStateIndex;
+
+constexpr int kQErrorStateIndex = 0;
+constexpr int kBgErrorStateIndex = 3 + kQErrorStateIndex;
+constexpr int kVErrorStateIndex = 3 + kBgErrorStateIndex;
+constexpr int kBaErrorStateIndex = 3 + kVErrorStateIndex;
+constexpr int kPErrorStateIndex = 3 + kBaErrorStateIndex;
+
 constexpr int kImuStateSize = 16;
 constexpr int kImuErrorStateSize = 15;
 
@@ -45,10 +52,10 @@ class ImuState {
 
   void SetImuStateVector(const Matrix<Scalar, 16, 1>& state_vector) {
     I_q_G_ = Quaternion<Scalar>(state_vector.head(4).data());
-    bg_ = state_vector.block(kBgIndex, 0, 3, 1);
-    G_v_I_ = state_vector.block(kVIndex, 0, 3, 1);
-    ba_ = state_vector.block(kBaIndex, 0, 3, 1);
-    G_p_I_ = state_vector.block(kPIndex, 0, 3, 1);
+    bg_ = state_vector.block(kBgStateIndex, 0, 3, 1);
+    G_v_I_ = state_vector.block(kVStateIndex, 0, 3, 1);
+    ba_ = state_vector.block(kBaStateIndex, 0, 3, 1);
+    G_p_I_ = state_vector.block(kPStateIndex, 0, 3, 1);
   }
 
  private:
@@ -86,7 +93,10 @@ class KeyFrameState {
 template <typename Scalar>
 class EkfState {
  public:
-  EkfState() : last_update_time_(0) {}
+  EkfState() : last_update_time_(0) {
+//    covariance.resize(kImuErrorStateSize, kImuErrorStateSize);
+    covariance.setIdentity(kImuErrorStateSize, kImuErrorStateSize);
+  }
 
   ImuState<Scalar> imu_state;
 

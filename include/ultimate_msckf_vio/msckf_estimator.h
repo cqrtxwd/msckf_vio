@@ -10,11 +10,16 @@
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/ekf_state.h"
 #include "ultimate_msckf_vio/utility/low_pass_filter.h"
+#include "ultimate_msckf_vio/utility/geometric_kit.h"
 
 namespace ultimate_msckf_vio {
 
 constexpr double kAccelFilterCutOffFreqency = 6;
 constexpr double kGyroFilterCutOffFreqency = 6;
+
+using Eigen::Quaterniond;
+using Eigen::Vector3d;
+using Eigen::Matrix;
 
 class MsckfEstimator {
  public:
@@ -39,11 +44,30 @@ class MsckfEstimator {
 
   void ProcessMeasurementsNormalStage(const SensorMeasurement&);
 
-  void ProcessImu(const sensor_msgs::ImuConstPtr&);
+  void PropagateImu(const sensor_msgs::ImuConstPtr&);
 
-  bool PropagateEkfState(const Vector3d& accel_measurement,
-                         const Vector3d& gyro_measurement,
-                         const double& delta_t, EkfState<double>* ekf_state);
+  bool PropagateEkfStateAndPhiByRungeKutta(
+      const Vector3d& accel_measurement,
+      const Vector3d& gyro_measurement,
+      const double& delta_t, EkfState<double>* ekf_state,
+      Matrix<double, kImuErrorStateSize, kImuErrorStateSize>* phi);
+
+  void SetInitialState(const Quaterniond& q,
+                       const Vector3d& bg,
+                       const Vector3d& v,
+                       const Vector3d& ba,
+                       const Vector3d& p);
+
+  bool PropagateStateByRungeKuttaSingleStep(
+      const Matrix<double, kImuStateSize, 1>& state_vector,
+      const Matrix<double, kImuErrorStateSize, kImuErrorStateSize>& state_transition,
+      const Matrix<double, 3, 1>& accel_body,
+      const Matrix<double, 3, 1>& gyro_body,
+      const Matrix<double, 3, 1>& gravity,
+      const double& delta_t,
+      Matrix<double, kImuStateSize, 1>* derivative_vector,
+      Matrix<double, kImuErrorStateSize, kImuErrorStateSize>* state_transition_derivative,
+      Matrix<double, kImuErrorStateSize, kImuErrorStateSize>* covariance);
 
  private:
   EstimatorStatus estimator_status_;

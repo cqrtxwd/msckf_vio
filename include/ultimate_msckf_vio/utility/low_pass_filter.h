@@ -20,7 +20,7 @@ class LowPassFilter {
       : cut_off_freqency_(cut_off_frqency),
         flag_initialized_(false),
         filtered_data_timestamp_(0) {
-    ROS_INFO_STREAM("filter cut off freqency is: " << cut_off_freqency_;);
+//    ROS_INFO_STREAM("filter cut off freqency is: " << cut_off_freqency_;);
   }
 
   Scalar FilterData(Scalar unfiltered_data, double timestamp) {
