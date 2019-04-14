@@ -10,12 +10,15 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     ROS_INFO_STREAM("Initialize done ...");
     // TODO: fix this;
     Quaterniond q(1,0,0,0);
-    Vector3d bg(0, 0, 0);
-    Vector3d v(0, 0, 0);
-    Vector3d ba(0, 0, 0);
-    Vector3d p(0, 0, 0);
+    Vector3d bg(1, 1, 1);
+    Vector3d v(2, 2, 2);
+    Vector3d ba(3, 3, 3);
+    Vector3d p(4, 4, 4);
 
     SetInitialState(q, bg, v, ba, p);
+    ROS_INFO_STREAM("set cov");
+    ekf_state_.SetCovariance();
+    ROS_INFO_STREAM("set cov done");
     estimator_status_ = EstimatorStatus::kNormalStage;
   }
 }
@@ -28,13 +31,21 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
   // propagete imu data, push ekf state to next image timestamp
   ROS_INFO_STREAM("normal stage2 ");
   deque<ImuConstPtr> imu_measurements = measurement.imu_measurements;
-  for (auto imu_msg : imu_measurements) {
-    PropagateImu(imu_msg);
-  }
+//  for (auto imu_msg : imu_measurements) {
+//    PropagateImu(imu_msg);
+//  }
 
   // check keyframe
 
-  // when there is enough KF , ekf update
+  if (KeyFrameCheck()) {
+    // add imu state to KF state
+
+    ekf_state_.AugmentStateAndCovariance();
+
+    // when KFs in slide window reaches Maximun size , ekf update
+
+  }
+  frame_count_++;
 }
 
 void MsckfEstimator::PropagateImu(const sensor_msgs::ImuConstPtr& imu_msg) {
@@ -175,6 +186,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                       k4_derivative) / 6;
   final_state = state_vector + delta_t * final_derivative;
   ekf_state->SetImuStateVector(final_state);
+  ROS_INFO_STREAM("final_state:  " << final_state);
 
   final_phi_derivative = (k1_phi_derivative +
                           2 * k2_phi_derivative +
@@ -231,7 +243,7 @@ bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
     derivative_vector->block<3, 1>(kVStateIndex, 0) = v_derivative;
     derivative_vector->block<3, 1>(kBaStateIndex, 0) = ba_derivative;
     derivative_vector->block<3, 1>(kPStateIndex, 0) = p_derivative;
-    ROS_INFO_STREAM("derivative "<< derivative_vector->transpose(););
+//    ROS_INFO_STREAM("derivative "<< derivative_vector->transpose(););
 
     // propagate state_transition_matrix
     Matrix<double, kImuErrorStateSize, kImuErrorStateSize> F;
@@ -256,6 +268,14 @@ bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
 
 
     return true;
+}
+
+bool MsckfEstimator::KeyFrameCheck() {
+  // for now, we just sample the image in a certain rate
+  if (frame_count_ % 3 == 0) {
+    return true;
+  }
+  return false;
 }
 
 }  // namespace ultimate_msckf_vio

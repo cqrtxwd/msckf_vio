@@ -69,11 +69,14 @@ class MsckfEstimator {
       Matrix<double, kImuErrorStateSize, kImuErrorStateSize>* state_transition_derivative,
       Matrix<double, kImuErrorStateSize, kImuErrorStateSize>* covariance);
 
+  bool KeyFrameCheck();
+
  private:
   EstimatorStatus estimator_status_;
   EkfState<double> ekf_state_;
 
   int frame_count_;
+  int key_frame_count_;
   double pre_time_;
   double cur_time_;
 
