@@ -11,15 +11,19 @@
 #include "ultimate_msckf_vio/ekf_state.h"
 #include "ultimate_msckf_vio/utility/low_pass_filter.h"
 #include "ultimate_msckf_vio/utility/geometric_kit.h"
+#include "ultimate_msckf_vio/visual_observation_manager.h"
 
 namespace ultimate_msckf_vio {
 
 constexpr double kAccelFilterCutOffFreqency = 6;
 constexpr double kGyroFilterCutOffFreqency = 6;
 
+
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::Matrix;
+using std::pair;
+using std::map;
 
 class MsckfEstimator {
  public:
@@ -29,7 +33,9 @@ class MsckfEstimator {
         accel_filter_(kAccelFilterCutOffFreqency),
         gyro_filter_(kGyroFilterCutOffFreqency),
         pre_time_(-1),
-        cur_time_(-1) {}
+        cur_time_(-1) {
+    visual_observation_manager_.Initialize(&ekf_state_);
+  }
 
   enum EstimatorStatus {
     kInitializeing = 0,
@@ -71,9 +77,12 @@ class MsckfEstimator {
 
   bool KeyFrameCheck();
 
+  bool ShouldMarginalize();
+
+
  private:
   EstimatorStatus estimator_status_;
-  EkfState<double> ekf_state_;
+  EkfStated ekf_state_;
 
   int frame_count_;
   int key_frame_count_;
@@ -82,6 +91,9 @@ class MsckfEstimator {
 
   LowPassFilter<Eigen::Vector3d> accel_filter_;
   LowPassFilter<Eigen::Vector3d> gyro_filter_;
+
+  VisualObservationManager visual_observation_manager_;
+
 };
 
 }  // namespace ultimate_msckf_vio

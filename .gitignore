@@ -4,3 +4,6 @@ my_msckf.creator
 my_msckf.creator.user
 my_msckf.files
 my_msckf.includes
+.kdev4/
+ultimate_msckf_vio.kdev4
+

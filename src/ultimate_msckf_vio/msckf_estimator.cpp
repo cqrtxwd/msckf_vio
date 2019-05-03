@@ -35,18 +35,62 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
 //    PropagateImu(imu_msg);
 //  }
 
+  // manage feature points
+  // we use front-end od VINS, so here is how to restore feature information
+  // from VINS feature_tracker
+  auto img_msg = measurement.image;
+  map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> cur_image;
+  // now image is only a vector with a lot of feature points info,
+  constexpr int NUM_OF_CAM = 1;
+  for (unsigned int i = 0; i < img_msg->points.size(); i++)
+  {
+      int v = img_msg->channels[0].values[i] + 0.5;
+      int feature_id = v / NUM_OF_CAM;
+      int camera_id = v % NUM_OF_CAM;  // alaways = 0
+      double x = img_msg->points[i].x;
+      double y = img_msg->points[i].y;
+      double z = img_msg->points[i].z;
+      double p_u = img_msg->channels[1].values[i];
+      double p_v = img_msg->channels[2].values[i];
+      double velocity_x = img_msg->channels[3].values[i];
+      double velocity_y = img_msg->channels[4].values[i];
+      ROS_ASSERT(z == 1);
+      Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
+      xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
+      cur_image[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
+//      ROS_INFO_STREAM("v: "<<v;);
+//      ROS_INFO_STREAM("feature_id: "<<feature_id;);
+  }
+
+
+  // feature_manager add data
+
   // check keyframe
 
   if (KeyFrameCheck()) {
     // add imu state to KF state
+    // build a keyframe and build feature bundles of each point
+    visual_observation_manager_.AddNewKeyFrame(cur_image);
 
-    ekf_state_.AugmentStateAndCovariance();
+//    ekf_state_.AugmentStateAndCovariance();
+
+    // TODO: should visual update
+
+    // TODO: should maginlize
+//    if(ShouldMarginalize()) {
+//      visual_observation_manager_.MarginalizeOldestKeyframe();
+//    }
+
+
 
     // when KFs in slide window reaches Maximun size , ekf update
+
 
   }
   frame_count_++;
 }
+
+
 
 void MsckfEstimator::PropagateImu(const sensor_msgs::ImuConstPtr& imu_msg) {
   ROS_INFO_STREAM("ProcessImu ");
@@ -197,11 +241,11 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
   return true;
 }
 
-void MsckfEstimator::SetInitialState(const Eigen::Quaterniond &q,
-                                     const Eigen::Vector3d &bg,
-                                     const Eigen::Vector3d &v,
-                                     const Eigen::Vector3d &ba,
-                                     const Eigen::Vector3d &p) {
+void MsckfEstimator::SetInitialState(const Eigen::Quaterniond& q,
+                                     const Eigen::Vector3d& bg,
+                                     const Eigen::Vector3d& v,
+                                     const Eigen::Vector3d& ba,
+                                     const Eigen::Vector3d& p) {
   Matrix<double, 16, 1> init_state_vector;
   init_state_vector << q.coeffs(), bg, v, ba, p;
   ekf_state_.SetImuStateVector(init_state_vector);
@@ -266,7 +310,6 @@ bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
 
 
 
-
     return true;
 }
 
@@ -277,5 +320,10 @@ bool MsckfEstimator::KeyFrameCheck() {
   }
   return false;
 }
+
+bool MsckfEstimator::ShouldMarginalize() {
+  return visual_observation_manager_.ShouldMarginalize();
+}
+
 
 }  // namespace ultimate_msckf_vio

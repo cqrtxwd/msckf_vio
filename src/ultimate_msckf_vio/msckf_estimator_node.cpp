@@ -9,6 +9,7 @@
 #include "std_msgs/Bool.h"
 #include "ultimate_msckf_vio/data_manager.h"
 #include "eigen3/Eigen/Eigen"
+#include "glog/logging.h"
 
 using std::deque;
 using std::mutex;
@@ -40,9 +41,8 @@ int main(int argc, char** argv) {
   ros::NodeHandle n;
 
   ROS_INFO_STREAM(" msckf start");
-  // Eigen::Quaterniond q(1, 2, 3, 4);
-  // q.coeffs();
-  // ROS_INFO_STREAM("q.coeffs(); " << q.coeffs(););
+//  google::InitGoogleLogging(argv[0]);
+//  LOG(INFO) << "hello msckf";
 
   ros::Subscriber sub_feature =
       n.subscribe("/feature_tracker/feature", 2000, FeaturesCallback);

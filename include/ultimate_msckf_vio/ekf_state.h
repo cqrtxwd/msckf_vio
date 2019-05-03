@@ -176,8 +176,9 @@ class EkfState {
   }
 
   void AugmentStateAndCovariance() {
+    ROS_INFO_STREAM("AugmentStateAndCovariance");
     // TODO: add info to KF manager
-    ROS_INFO_STREAM("before augment cov: \n"<< covariance;);
+    // ROS_INFO_STREAM("before augment cov: \n"<< covariance;);
 
 //    ROS_INFO_STREAM("new_key_frame: " << new_key_frame.G_p_I ;);
     // matrix block operation
@@ -261,9 +262,28 @@ class EkfState {
 //    ROS_INFO_STREAM("after augment cov: \n"<< covariance;);
   }
 
+
+  bool MarginalizeOldestKeyframe() {
+    // todo :
+    return true;
+  }
+
+  bool MarginalizeKeyframeByIndex(int kf_index) {
+    // todo:
+    return true;
+  }
+
+  bool MarginalizeLandmarkByIndex(int landmark_index) {
+    // todo
+    return true;
+  }
+
+
  private:
   double last_update_time_;
 };
+
+typedef EkfState<double> EkfStated;
 
 }  // namespace ultimate_msckf_vio
 
