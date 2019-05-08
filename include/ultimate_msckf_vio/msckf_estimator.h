@@ -79,6 +79,8 @@ class MsckfEstimator {
 
   bool ShouldMarginalize();
 
+  bool ShouldVisualUpdate();
+
 
  private:
   EstimatorStatus estimator_status_;

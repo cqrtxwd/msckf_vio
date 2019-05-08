@@ -7,6 +7,8 @@
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/feature_bundle.h"
 #include "ultimate_msckf_vio/ekf_state.h"
+#include "ultimate_msckf_vio/visual_manager_interface.h"
+
 
 namespace ultimate_msckf_vio {
 
@@ -20,7 +22,7 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
 
-class VisualObservationManager {
+class VisualObservationManager : public VisualManagerInterface {
  public:
   VisualObservationManager():
     frame_count_(0),
@@ -31,7 +33,6 @@ class VisualObservationManager {
   }
 
   bool AddNewKeyFrame(const ImageInfo&);
-
 
 
   int keyframe_count() {
@@ -51,7 +52,7 @@ class VisualObservationManager {
   deque<int> keyframe_ids_;
 
   // features in each keyframe
-  map<int, vector<int>> keyframe_to_features;
+  map<int, vector<int>> keyframe_to_features; // maybe list<vector<int>> ?
 
   // feature id , every feature's unique id
   vector<int> features_id_;
@@ -65,10 +66,14 @@ class VisualObservationManager {
 
   int frame_count_;
   int keyframe_count_;
+  int num_keyframes_;  // always equal to keyframe_ids_.size()
 
   // listener
   EkfStated* ekf_state_;
 };
+
+typedef std::shared_ptr<VisualObservationManager> VisualObservationManagerPtr;
+typedef std::shared_ptr<const VisualObservationManager> VisualObservationManagerConstPtr;
 
 }
 

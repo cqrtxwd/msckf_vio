@@ -5,6 +5,7 @@ namespace ultimate_msckf_vio {
 bool VisualObservationManager::AddNewKeyFrame(const ImageInfo& image) {
   ROS_INFO_STREAM("AddNewKeyFrame" << keyframe_count_;);
   keyframe_count_++;
+  num_keyframes_++;
   keyframe_ids_.push_back(keyframe_count_);
   for (auto feaid_info : image) {
     int feature_id = feaid_info.first;
@@ -19,7 +20,8 @@ bool VisualObservationManager::AddNewKeyFrame(const ImageInfo& image) {
       feature_bundles_.insert(std::make_pair(feature_id,
                                              FeatureBundle(feature_id,
                                                            keyframe_count_,
-                                                           feature_uv)));
+                                                           feature_uv,
+                                                           this)));
     } else {
       feature_bundles_[feature_id].AddObservedKeyframe(keyframe_count_,
                                                        feature_uv);

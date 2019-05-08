@@ -72,14 +72,14 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
     // build a keyframe and build feature bundles of each point
     visual_observation_manager_.AddNewKeyFrame(cur_image);
 
-//    ekf_state_.AugmentStateAndCovariance();
 
     // TODO: should visual update
+//    if ()
 
     // TODO: should maginlize
-//    if(ShouldMarginalize()) {
-//      visual_observation_manager_.MarginalizeOldestKeyframe();
-//    }
+    if(ShouldMarginalize()) {
+      visual_observation_manager_.MarginalizeOldestKeyframe();
+    }
 
 
 
@@ -323,6 +323,16 @@ bool MsckfEstimator::KeyFrameCheck() {
 
 bool MsckfEstimator::ShouldMarginalize() {
   return visual_observation_manager_.ShouldMarginalize();
+}
+
+// we impose ekf update when any of the situations below happens :
+// 1) keyframe window size reaches the maximun size;
+// 2) at least one feature in window no longer been observed
+bool MsckfEstimator::ShouldVisualUpdate() {
+//  if (visual_observation_manager_) {
+
+//  }
+
 }
 
 
