@@ -12,14 +12,11 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 
-#include("cmake/FindGlog.cmake")
-#find_package(lib_glog REQUIRED)
-#include_directories(SYSTEM ${GLOG_INCLUDE_DIRS})
-#list(APPEND LINKER_LIBS ${GLOG_LIBRARIES})
+set(GLOG_LIBRARY glog)
+include_directories(${GLOG_INCLUDE_DIRS})
 
 
 find_package(OpenCV REQUIRED)
-set(GLOG_LIBRARY glog)
 
 include_directories(
   include
@@ -38,6 +35,7 @@ add_library(
   src/ultimate_msckf_vio/ekf_state.cpp
   src/ultimate_msckf_vio/visual_observation_manager.cpp
   src/ultimate_msckf_vio/feature_bundle.cpp
+  src/ultimate_msckf_vio/ekf_update.cpp
 )
 
 catkin_package()
@@ -54,5 +52,6 @@ catkin_package()
 
 add_executable(msckf_estimator_node src/${PROJECT_NAME}/msckf_estimator_node.cpp)
 target_link_libraries(msckf_estimator_node ${catkin_LIBRARIES} msckf_estimator_lib)
-
+target_link_libraries(msckf_estimator_node PUBLIC ${GLOG_LIBRARY})
+target_link_libraries(msckf_estimator_node PUBLIC gflags)
 

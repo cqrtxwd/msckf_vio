@@ -8,7 +8,7 @@ void DataManager::Process() {
   auto measurment = GetSensorMeasurement();
   lk.unlock();
   if (!ProcessMeasurement(measurment)) {
-    ROS_INFO_STREAM("ProcessMeasurement failed !!!");
+    LOG(ERROR) << "ProcessMeasurement failed !!!";
   }
 }
 
@@ -121,7 +121,7 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
 
 bool DataManager::ProcessMeasurement(
     const SensorMeasurement& sensor_measurement) {
-  ROS_INFO_STREAM("ProcessMeasurement calls";);
+  LOG(INFO) << "ProcessMeasurement calls";
   switch (msckf_estimator_.estimator_status()) {
     case MsckfEstimator::EstimatorStatus::kInitializeing : {
       // gather data for initialize, then initialize
@@ -135,11 +135,11 @@ bool DataManager::ProcessMeasurement(
     }
     case MsckfEstimator::EstimatorStatus::kLost : {
       // VIO Lost, initialize again
-      ROS_INFO_STREAM("lost statge");
+      LOG(ERROR) << "lost statge";
       break;
     }
     default:
-      ROS_INFO("unknown status of estimator !!!");
+      LOG(ERROR) << "unknown status of estimator !!!";
       break;
   }
 

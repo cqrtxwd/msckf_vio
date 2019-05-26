@@ -13,7 +13,7 @@ using std::deque;
 using std::map;
 using std::vector;
 
-// a single feature point observed by multi-keyframe, and impose  multi
+// a single feature point observed by multi-keyframe, and impose multi
 // constrains to these keyframes
 
 class FeatureBundle {
@@ -27,6 +27,7 @@ class FeatureBundle {
       : feature_id_(feature_id),
         ready_to_optimize_(false),
         optimized_(false),
+//        consecutive_lost_count_(0),
         visual_manager_listener_(visual_manager_listener) {
     observed_keframes_id_.push_back(keyframe_id);
     observed_uv_.push_back(feature_uv);
@@ -39,6 +40,18 @@ class FeatureBundle {
 
   int KeyframeNum() {
     return observed_keframes_id_.size();
+  }
+
+  int LastTrackKeyframeId() {
+    return observed_keframes_id_.back();
+  }
+
+  void SetReady() {
+    ready_to_optimize_ = true;
+  }
+
+  bool ready_to_optimize() {
+    return ready_to_optimize_;
   }
 
   // for debug
@@ -63,7 +76,7 @@ class FeatureBundle {
 
   //  how long this feature lost track consistantly, when lost track more than
   //  2 or 3 times, consider it lost track, and this bundle ready to optimaize
-  int lost_count_;
+//  int consecutive_lost_count_;
 
   //  vector<int> feature_indexs_;
 

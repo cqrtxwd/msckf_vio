@@ -25,8 +25,8 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
 
 void MsckfEstimator::ProcessMeasurementsNormalStage(
     const SensorMeasurement& measurement) {
-  ROS_INFO_STREAM("normal stage");
-  ROS_ASSERT(measurement.image->header.stamp ==
+  LOG(INFO) << "normal stage";
+  CHECK(measurement.image->header.stamp ==
              measurement.imu_measurements.back()->header.stamp);
   // propagete imu data, push ekf state to next image timestamp
   ROS_INFO_STREAM("normal stage2 ");
@@ -54,7 +54,7 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
       double p_v = img_msg->channels[2].values[i];
       double velocity_x = img_msg->channels[3].values[i];
       double velocity_y = img_msg->channels[4].values[i];
-      ROS_ASSERT(z == 1);
+      CHECK(z == 1);
       Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
       xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
       cur_image[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
@@ -72,9 +72,24 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
     // build a keyframe and build feature bundles of each point
     visual_observation_manager_.AddNewKeyFrame(cur_image);
 
+    // after add features to manager, try Find all the feature bundle ready
+    // to optimize
+    Timer check_bundle_timer;
+    check_bundle_timer.StartTimer();
+    vector<FeatureBundle> completed_feature_bundles;
+    visual_observation_manager_.FindCompletedFeatureBundles(
+          &completed_feature_bundles);
+    auto time_cost = check_bundle_timer.EndTimer();
+    LOG(INFO) << "FindCompletedFeatureBundles cost : " << time_cost << "secs";
 
-    // TODO: should visual update
-//    if ()
+    // ekf_state and cov agument
+    ekf_state_.AugmentStateAndCovariance();
+
+
+    // TODO: check should visual update
+    if (ShouldVisualUpdate()) {
+
+    }
 
     // TODO: should maginlize
     if(ShouldMarginalize()) {
@@ -84,6 +99,7 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
 
 
     // when KFs in slide window reaches Maximun size , ekf update
+//    ekf_update_->IEKFUpdate();
 
 
   }
@@ -329,9 +345,12 @@ bool MsckfEstimator::ShouldMarginalize() {
 // 1) keyframe window size reaches the maximun size;
 // 2) at least one feature in window no longer been observed
 bool MsckfEstimator::ShouldVisualUpdate() {
-//  if (visual_observation_manager_) {
+  if (visual_observation_manager_.ReachMaximumWindowSize()) {
+    return true;
+  }
+  // not finish
 
-//  }
+  return false;
 
 }
 

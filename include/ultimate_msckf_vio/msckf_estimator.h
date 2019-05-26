@@ -5,6 +5,7 @@
 #include <eigen3/Eigen/Eigen>
 #include <iostream>
 #include "ros/ros.h"
+#include "glog/logging.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
@@ -12,6 +13,8 @@
 #include "ultimate_msckf_vio/utility/low_pass_filter.h"
 #include "ultimate_msckf_vio/utility/geometric_kit.h"
 #include "ultimate_msckf_vio/visual_observation_manager.h"
+#include "ultimate_msckf_vio/ekf_update.h"
+#include "ultimate_msckf_vio/utility/timer.h"
 
 namespace ultimate_msckf_vio {
 
@@ -35,6 +38,7 @@ class MsckfEstimator {
         pre_time_(-1),
         cur_time_(-1) {
     visual_observation_manager_.Initialize(&ekf_state_);
+    ekf_update_.reset(new EkfUpdate());
   }
 
   enum EstimatorStatus {
@@ -95,6 +99,8 @@ class MsckfEstimator {
   LowPassFilter<Eigen::Vector3d> gyro_filter_;
 
   VisualObservationManager visual_observation_manager_;
+
+  std::unique_ptr<EkfUpdate> ekf_update_;
 
 };
 

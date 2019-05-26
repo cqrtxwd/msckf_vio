@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
 #include <eigen3/Eigen/Eigen>
+#include "glog/logging.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/feature_bundle.h"
 #include "ultimate_msckf_vio/ekf_state.h"
@@ -12,7 +13,8 @@
 
 namespace ultimate_msckf_vio {
 
-constexpr int kSlideWindowMaxSize = 16;
+constexpr int kMaxSlideWindowSize = 16;
+constexpr int kLostTrackThreshold = 2;
 
 using std::vector;
 using std::deque;
@@ -34,9 +36,15 @@ class VisualObservationManager : public VisualManagerInterface {
 
   bool AddNewKeyFrame(const ImageInfo&);
 
+  void FindCompletedFeatureBundles(
+      vector<FeatureBundle>* completed_feature_bundles);
 
   int keyframe_count() {
     return keyframe_count_;
+  }
+
+  bool ReachMaximumWindowSize() {
+    return keyframe_ids_.size() >= kMaxSlideWindowSize;
   }
 
   bool ShouldMarginalize();
@@ -44,7 +52,10 @@ class VisualObservationManager : public VisualManagerInterface {
   void MarginalizeOldestKeyframe();
 
 
+
  private:
+
+
   // keyframes in slide window
   // vector<PointCloudConstPtr> keyframes;
 

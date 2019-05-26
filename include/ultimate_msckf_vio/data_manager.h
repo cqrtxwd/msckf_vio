@@ -9,6 +9,7 @@
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include <condition_variable>
+#include <glog/logging.h>
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/utility/timer.h"

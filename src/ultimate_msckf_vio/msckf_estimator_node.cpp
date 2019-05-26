@@ -37,12 +37,16 @@ void ProcessLoop() {
 }
 
 int main(int argc, char** argv) {
+  google::InitGoogleLogging(argv[0]);
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  FLAGS_logtostderr = true;
+  FLAGS_colorlogtostderr = true;
+
   ros::init(argc, argv, "msckf_estimator");
   ros::NodeHandle n;
 
-  ROS_INFO_STREAM(" msckf start");
-//  google::InitGoogleLogging(argv[0]);
-//  LOG(INFO) << "hello msckf";
+  LOG(INFO) << "hello msckf";
+  LOG(ERROR) << "hello msckf";
 
   ros::Subscriber sub_feature =
       n.subscribe("/feature_tracker/feature", 2000, FeaturesCallback);
