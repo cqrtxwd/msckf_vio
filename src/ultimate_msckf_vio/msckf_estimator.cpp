@@ -79,19 +79,36 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
     vector<FeatureBundle> completed_feature_bundles;
     visual_observation_manager_.FindCompletedFeatureBundles(
           &completed_feature_bundles);
+    LOG(INFO) << "now ready to optimze bundle num: "
+              << completed_feature_bundles.size();
+
     auto time_cost = check_bundle_timer.EndTimer();
     LOG(INFO) << "FindCompletedFeatureBundles cost : " << time_cost << "secs";
 
     // ekf_state and cov agument
     ekf_state_.AugmentStateAndCovariance();
 
-
-    // TODO: check should visual update
-    if (ShouldVisualUpdate()) {
-
+    // check if reach max window size, we marginalize the oldest keyframe, set
+    // all the feature bundle involved in this keyframe ready to optimize.
+    // there is better strategy to marginalize, but for now, we just simplely
+    // marginalize the oldest
+    if(visual_observation_manager_.ReachMaximumWindowSize()) {
+      visual_observation_manager_.BuildFeatureBundleFromOldestKeyframe(
+            &completed_feature_bundles);
+      LOG(INFO) << "now ready to optimze bundle num: "
+                << completed_feature_bundles.size();
     }
 
-    // TODO: should maginlize
+    // if there are feature bundles build complete, ekf update
+    if (!completed_feature_bundles.empty()) {
+      ekf_update_->AddVisualConstraints(&completed_feature_bundles);
+      if (!ekf_update_->IEKFUpdate(&ekf_state_)) {
+        LOG(FATAL) << "IEKFUpdate fail";
+      }
+    }
+
+
+    // TODO: after ekf update, maginlize keyframe
     if(ShouldMarginalize()) {
       visual_observation_manager_.MarginalizeOldestKeyframe();
     }

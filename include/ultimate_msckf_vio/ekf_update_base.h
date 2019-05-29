@@ -5,6 +5,8 @@
 #include "ros/ros.h"
 #include <deque>
 
+#include "ultimate_msckf_vio/ekf_state.h"
+
 namespace ultimate_msckf_vio {
 
 using Eigen::Vector2d;
@@ -23,7 +25,7 @@ class EkfUpdateBase {
   virtual bool UpdateCovariance() = 0;
 
 
-  bool IEKFUpdate();
+  bool IEKFUpdate(EkfStated* ekf_state) {}
  private:
 
 

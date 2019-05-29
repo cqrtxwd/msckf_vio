@@ -19,6 +19,7 @@ constexpr int kLostTrackThreshold = 2;
 using std::vector;
 using std::deque;
 using std::map;
+using std::set;
 using sensor_msgs::PointCloudConstPtr;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -50,6 +51,13 @@ class VisualObservationManager : public VisualManagerInterface {
   bool ShouldMarginalize();
 
   void MarginalizeOldestKeyframe();
+
+  void BuildFeatureBundleFromKeyframeById(
+      const int& keyframe_id,
+      vector<FeatureBundle>* append_feature_bundles);
+
+  void BuildFeatureBundleFromOldestKeyframe(
+      vector<FeatureBundle>* append_feature_bundles);
 
 
 

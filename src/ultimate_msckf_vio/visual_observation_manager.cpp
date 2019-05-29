@@ -57,6 +57,31 @@ void VisualObservationManager::MarginalizeOldestKeyframe() {
   ekf_state_->MarginalizeOldestKeyframe();
 }
 
+void VisualObservationManager::BuildFeatureBundleFromKeyframeById(
+    const int &keyframe_id, vector<FeatureBundle>* append_feature_bundles) {
+  CHECK(append_feature_bundles != nullptr);
+  map<int, vector<int>>::iterator feas_in_keyframe
+      = keyframe_to_features.find(keyframe_id);
+  if (feas_in_keyframe == keyframe_to_features.end()) {
+    LOG(ERROR) << "keyframe id invalid, "
+                  "the given keyframe id is out of slide window";
+    return;
+  } else {
+    for (auto feature_id : (*feas_in_keyframe).second) {
+      FeatureBundle& cur_feature_bundle = feature_bundles_[feature_id];
+      cur_feature_bundle.SetReady();
+      append_feature_bundles->push_back(cur_feature_bundle);
+    }
+  }
+}
+
+void VisualObservationManager::BuildFeatureBundleFromOldestKeyframe(
+    vector<FeatureBundle> *append_feature_bundles) {
+  BuildFeatureBundleFromKeyframeById(keyframe_ids_.front(),
+                                     append_feature_bundles);
+  return;
+}
+
 void VisualObservationManager::FindCompletedFeatureBundles(
     vector<FeatureBundle>* completed_feature_bundles) {
   CHECK(completed_feature_bundles!=NULL)
