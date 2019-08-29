@@ -20,7 +20,7 @@ void FeatrueTracker::ProcessImage(cv_bridge::CvImage current_image) {
   // find first initial feature points
   cv::goodFeaturesToTrack(clahe_img, previous_points_, 150, 0.01, 30);
 
-  ROS_INFO_STREAM("feature size: " << previous_points_.size());
+  LOG(INFO) << "feature size: " << previous_points_.size();
 
 
 

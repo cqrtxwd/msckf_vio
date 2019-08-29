@@ -57,18 +57,16 @@ SensorMeasurement DataManager::GetSensorMeasurement() {
   if (imu_deque.back()->header.stamp.toSec() < image_time) {
     auto back_imu_data = imu_buf_.front();
     auto pre_imu_data = imu_deque.back();
-    ROS_INFO_STREAM("about to interpolate ";);
+    LOG(INFO) << "about to interpolate ";
     auto interpolate_imu =
         InterpolateImu(image_time, pre_imu_data, back_imu_data);
-    ROS_INFO_STREAM(
-        "interpolate time: " << interpolate_imu->header.stamp.toSec(););
+    LOG(INFO) << "interpolate time: " << interpolate_imu->header.stamp.toSec();
     imu_buf_.push_front(interpolate_imu);
     imu_deque.push_back(interpolate_imu);
   } else if (imu_deque.back()->header.stamp.toSec() == image_time) {
     imu_buf_.push_front(imu_deque.back());
-    // ROS_INFO("imu_msg time equals image time exacly ...");
   } else {
-    ROS_INFO("you miss some case !!!!!");
+    LOG(INFO) << "you miss some case !!!!!";
   }
   SensorMeasurement result_sensor_measurement{imu_deque, images_buf_.front()};
   images_buf_.pop_front();
@@ -81,7 +79,7 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
   double pre_time = pre_imu->header.stamp.toSec();
   double forw_time = forw_imu->header.stamp.toSec();
   if (forw_time <= pre_time) {
-    ROS_INFO_STREAM("please inverse timestamp when interpolate imu");
+    LOG(INFO) << "please inverse timestamp when interpolate imu";
   }
 
   Matrix<double, 6, 1> pre_accel_gyro;

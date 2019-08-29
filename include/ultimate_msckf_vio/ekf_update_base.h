@@ -13,21 +13,26 @@ using Eigen::Vector2d;
 using std::deque;
 using std::map;
 using std::vector;
+using Eigen::MatrixXd;
 
 class EkfUpdateBase {
  public:
-  virtual bool ComputeObservationMatrixAndResidual() = 0;
+  EkfUpdateBase() {}
+//   ~EkfUpdateBase();
 
-  virtual bool ComputeKalmanGain() = 0;
+  virtual bool EvaluateJaccobianAndResidual(EkfStated *ekf_state,
+                                            MatrixXd* H,
+                                            MatrixXd* residual) = 0;
 
-  virtual bool UpdateState() = 0;
+//  virtual bool ComputeKalmanGain() = 0;
 
-  virtual bool UpdateCovariance() = 0;
+//  virtual bool UpdateState() = 0;
+
+//  virtual bool UpdateCovariance() = 0;
 
 
-  bool IEKFUpdate(EkfStated* ekf_state) {}
+//  bool IEKFUpdate(EkfStated* ekf_state) {}
  private:
-
 
 
 };

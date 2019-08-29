@@ -3,7 +3,7 @@
 namespace ultimate_msckf_vio {
 
 bool VisualObservationManager::AddNewKeyFrame(const ImageInfo& image) {
-  ROS_INFO_STREAM("AddNewKeyFrame" << keyframe_count_;);
+  LOG(INFO) << "AddNewKeyFrame" << keyframe_count_;
   keyframe_count_++;
   num_keyframes_++;
   keyframe_ids_.push_back(keyframe_count_);
@@ -54,6 +54,7 @@ bool VisualObservationManager::ShouldMarginalize() {
 
 
 void VisualObservationManager::MarginalizeOldestKeyframe() {
+  // todo
   ekf_state_->MarginalizeOldestKeyframe();
 }
 

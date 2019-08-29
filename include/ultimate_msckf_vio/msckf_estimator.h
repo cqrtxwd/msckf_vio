@@ -13,7 +13,7 @@
 #include "ultimate_msckf_vio/utility/low_pass_filter.h"
 #include "ultimate_msckf_vio/utility/geometric_kit.h"
 #include "ultimate_msckf_vio/visual_observation_manager.h"
-#include "ultimate_msckf_vio/ekf_update.h"
+#include "ultimate_msckf_vio/visual_ekf_update.h"
 #include "ultimate_msckf_vio/utility/timer.h"
 
 namespace ultimate_msckf_vio {
@@ -38,7 +38,7 @@ class MsckfEstimator {
         pre_time_(-1),
         cur_time_(-1) {
     visual_observation_manager_.Initialize(&ekf_state_);
-    ekf_update_.reset(new EkfUpdate());
+    ekf_update_.reset(new VisualEkfUpdate());
   }
 
   enum EstimatorStatus {
@@ -100,7 +100,7 @@ class MsckfEstimator {
 
   VisualObservationManager visual_observation_manager_;
 
-  std::unique_ptr<EkfUpdate> ekf_update_;
+  std::unique_ptr<VisualEkfUpdate> ekf_update_;
 
 };
 
