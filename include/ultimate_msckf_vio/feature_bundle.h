@@ -2,7 +2,8 @@
 #define FEATURE_BUNDLE_H_
 
 #include <deque>
-#include "eigen3/Eigen/Eigen"
+#include <eigen3/Eigen/Eigen>
+#include <glog/logging.h>
 #include "ros/ros.h"
 #include "ultimate_msckf_vio/visual_manager_interface.h"
 
@@ -56,7 +57,7 @@ class FeatureBundle {
 
   // for debug
   void PrintInfo() {
-    ROS_INFO_STREAM("observed_keframes_id_ size : " << observed_keframes_id_.size(););
+    LOG(INFO) << "observed_keframes_id_ size : " << observed_keframes_id_.size();
     for (int id :  observed_keframes_id_) {
       std::cout << " observed by kf : " << id;
     }

@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include "ros/ros.h"
+#include <glog/logging.h>
 
 namespace ultimate_msckf_vio {
 
@@ -13,7 +14,7 @@ class LowPassFilter {
       : cut_off_freqency_(10.0),
         flag_initialized_(false),
         filtered_data_timestamp_(0) {
-    ROS_INFO_STREAM("filter cut off freqency is: " << cut_off_freqency_;);
+    LOG(INFO) << "filter cut off freqency is: " << cut_off_freqency_;
   }
 
   LowPassFilter(double cut_off_frqency)

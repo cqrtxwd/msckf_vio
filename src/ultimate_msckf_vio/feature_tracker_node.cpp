@@ -17,11 +17,11 @@ void ImageCallback(const sensor_msgs::ImageConstPtr& raw_image) {
   last_time = cur_time;
   cur_time = raw_image->header.stamp.toSec();
 
-  ROS_INFO_STREAM("time count " << std::setprecision(10)
-                                << cur_time - last_time);
+  LOG(INFO) << "time count " << std::setprecision(10)
+                             << cur_time - last_time;
 
   // prepare the image to process
-  ROS_INFO_STREAM("image encoding " << raw_image->encoding);
+  LOG(INFO) << "image encoding " << raw_image->encoding;
   auto cv_image_ptr =
       cv_bridge::toCvCopy(raw_image, sensor_msgs::image_encodings::MONO8);
   feature_tracker.ProcessImage(*cv_image_ptr);

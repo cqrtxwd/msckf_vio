@@ -4,10 +4,10 @@ namespace ultimate_msckf_vio {
 
 void MsckfEstimator::ProcessMeasurementsInitialization(
     const SensorMeasurement& measurement) {
-  ROS_INFO_STREAM("Initializing");
+  LOG(INFO) << "Initializing";
   frame_count_++;
   if (frame_count_ >= 3) {
-    ROS_INFO_STREAM("Initialize done ...");
+    LOG(INFO) << "Initialize done ...";
     // TODO: fix this;
     Quaterniond q(1,0,0,0);
     Vector3d bg(1, 1, 1);
@@ -16,9 +16,9 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     Vector3d p(4, 4, 4);
 
     SetInitialState(q, bg, v, ba, p);
-    ROS_INFO_STREAM("set cov");
+    LOG(INFO) << "set cov";
     ekf_state_.SetCovariance();
-    ROS_INFO_STREAM("set cov done");
+    LOG(INFO) << "set cov done";
     estimator_status_ = EstimatorStatus::kNormalStage;
   }
 }
@@ -29,7 +29,6 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
   CHECK(measurement.image->header.stamp ==
              measurement.imu_measurements.back()->header.stamp);
   // propagete imu data, push ekf state to next image timestamp
-  ROS_INFO_STREAM("normal stage2 ");
   deque<ImuConstPtr> imu_measurements = measurement.imu_measurements;
 //  for (auto imu_msg : imu_measurements) {
 //    PropagateImu(imu_msg);
@@ -58,8 +57,8 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
       Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
       xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
       cur_image[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
-//      ROS_INFO_STREAM("v: "<<v;);
-//      ROS_INFO_STREAM("feature_id: "<<feature_id;);
+//      LOG(INFO) << "v: "<<v;
+//      LOG(INFO) << "feature_id: "<<feature_id;
   }
 
 
@@ -101,15 +100,17 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
 
     // if there are feature bundles build complete, ekf update
     if (!completed_feature_bundles.empty()) {
-      ekf_update_->AddVisualConstraints(&completed_feature_bundles);
-      if (!ekf_update_->IEKFUpdate(&ekf_state_)) {
-        LOG(FATAL) << "IEKFUpdate fail";
-      }
+      LOG(INFO) << "ekf update ";
+//      ekf_update_->AddVisualConstraints(&completed_feature_bundles);
+//      if (!ekf_update_->IEKFUpdate(&ekf_state_)) {
+//        LOG(FATAL) << "IEKFUpdate fail";
+//      }
     }
 
 
     // TODO: after ekf update, maginlize keyframe
     if(ShouldMarginalize()) {
+      // todo
       visual_observation_manager_.MarginalizeOldestKeyframe();
     }
 
@@ -126,7 +127,7 @@ void MsckfEstimator::ProcessMeasurementsNormalStage(
 
 
 void MsckfEstimator::PropagateImu(const sensor_msgs::ImuConstPtr& imu_msg) {
-  ROS_INFO_STREAM("ProcessImu ");
+  LOG(INFO) << "ProcessImu ";
   if (cur_time_ <= 0) {
     cur_time_ = imu_msg->header.stamp.toSec();
     pre_time_ = cur_time_;
@@ -155,7 +156,7 @@ void MsckfEstimator::PropagateImu(const sensor_msgs::ImuConstPtr& imu_msg) {
                                            delta_t,
                                            &ekf_state_,
                                            &phi)) {
-    ROS_INFO_STREAM("PropagateEkfStateAndPhiByRungeKutta failed !!!");
+    LOG(INFO) << "PropagateEkfStateAndPhiByRungeKutta failed !!!";
   }
 }
 
@@ -168,10 +169,10 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
   if (ekf_state == nullptr || phi == nullptr) {
     return false;
   }
-  ROS_INFO_STREAM("PropagateEkfState ");
+  LOG(INFO) << "PropagateEkfState ";
   // get imu data in robot_body_frame(IMU frame)
-  Vector3d gyro_body = gyro_measurement - ekf_state->imu_state.bg();
-  Vector3d accel_body = accel_measurement - ekf_state->imu_state.ba();
+  Vector3d gyro_body = gyro_measurement - ekf_state->imu_state().bg();
+  Vector3d accel_body = accel_measurement - ekf_state->imu_state().ba();
   Vector3d gravity(0, 0, 9.8);
   // use RungeKutta4 to propagate IMU state
   Matrix<double, kImuErrorStateSize, kImuErrorStateSize> origin_phi;
@@ -210,7 +211,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                                            &k1_derivative,
                                            &k1_phi_derivative,
                                            &imu_covariance)) {
-    ROS_INFO_STREAM("PropagateStateAndCovByRungeKutta k1 failed !!!");
+    LOG(INFO) << "PropagateStateAndCovByRungeKutta k1 failed !!!";
   }
 
   // compute k2_derivative
@@ -225,7 +226,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                                            &k2_derivative,
                                            &k2_phi_derivative,
                                            &imu_covariance)) {
-    ROS_INFO_STREAM("PropagateStateAndCovByRungeKutta k2 failed !!!");
+    LOG(INFO) << "PropagateStateAndCovByRungeKutta k2 failed !!!";
   }
 
   // compute k3_derivative
@@ -240,7 +241,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                                            &k3_derivative,
                                            &k3_phi_derivative,
                                            &imu_covariance)) {
-    ROS_INFO_STREAM("PropagateStateAndCovByRungeKutta k3 failed !!!");
+    LOG(INFO) << "PropagateStateAndCovByRungeKutta k3 failed !!!";
   }
 
   // compute k4_derivative
@@ -255,7 +256,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                                            &k4_derivative,
                                            &k4_phi_derivative,
                                            &imu_covariance)) {
-    ROS_INFO_STREAM("PropagateStateAndCovByRungeKutta k4 failed !!!");
+    LOG(INFO) << "PropagateStateAndCovByRungeKutta k4 failed !!!";
   }
   final_derivative = (k1_derivative +
                       2 * k2_derivative +
@@ -263,7 +264,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                       k4_derivative) / 6;
   final_state = state_vector + delta_t * final_derivative;
   ekf_state->SetImuStateVector(final_state);
-  ROS_INFO_STREAM("final_state:  " << final_state);
+  LOG(INFO) << "final_state:  " << final_state;
 
   final_phi_derivative = (k1_phi_derivative +
                           2 * k2_phi_derivative +
@@ -320,7 +321,7 @@ bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
     derivative_vector->block<3, 1>(kVStateIndex, 0) = v_derivative;
     derivative_vector->block<3, 1>(kBaStateIndex, 0) = ba_derivative;
     derivative_vector->block<3, 1>(kPStateIndex, 0) = p_derivative;
-//    ROS_INFO_STREAM("derivative "<< derivative_vector->transpose(););
+//    LOG(INFO) << "derivative "<< derivative_vector->transpose();
 
     // propagate state_transition_matrix
     Matrix<double, kImuErrorStateSize, kImuErrorStateSize> F;

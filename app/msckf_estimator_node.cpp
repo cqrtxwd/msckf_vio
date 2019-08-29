@@ -17,17 +17,17 @@ using std::mutex;
 ultimate_msckf_vio::DataManager data_manager;
 
 void ImuCallback(const sensor_msgs::ImuConstPtr& imu_msg) {
-  // ROS_INFO_STREAM("receve imu");
+  // LOG(INFO) << "receve imu";
   data_manager.ReceiveImuMeasurement(imu_msg);
 }
 
 void FeaturesCallback(const sensor_msgs::PointCloudConstPtr& image) {
-  // ROS_INFO_STREAM("receve features");
+  // LOG(INFO) << "receve features";
   data_manager.ReceiveImage(image);
 }
 
 void RestartCallback(const std_msgs::BoolConstPtr& restart_msg) {
-  ROS_INFO_STREAM("receve call back");
+  LOG(INFO) << "receve call back";
 }
 
 void ProcessLoop() {
