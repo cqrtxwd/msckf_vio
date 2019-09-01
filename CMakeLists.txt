@@ -11,10 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
 )
 
-
 set(GLOG_LIBRARY glog)
 include_directories(${GLOG_INCLUDE_DIRS})
-
 
 find_package(OpenCV REQUIRED)
 

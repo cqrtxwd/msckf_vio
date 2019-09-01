@@ -4,6 +4,7 @@
 #include <eigen3/Eigen/Eigen>
 #include <ros/ros.h>
 #include <glog/logging.h>
+#include <deque>
 
 namespace ultimate_msckf_vio {
 
@@ -12,6 +13,8 @@ using Eigen::Matrix3d;
 using Eigen::Quaternion;
 using Eigen::Vector3d;
 using std::vector;
+using std::deque;
+
 
 // state size :
 constexpr int kVectorStateSize = 3;
@@ -144,22 +147,22 @@ template <typename Scalar>
 class CalibrationState {
  public:
   CalibrationState():
-    q_G_I_(1, 0, 0, 0),
-    p_G_I_(0, 0, 0) {}
-  CalibrationState(const Quaternion<Scalar>& q_G_I,
-                   const Matrix<Scalar, 3, 1>& p_G_I)
-    :q_G_I_(q_G_I),
-     p_G_I_(p_G_I) {}
-  Quaternion<Scalar> q_G_I() const { return q_G_I_;}
-  Matrix<Scalar, 3, 1> p_G_I() const { return p_G_I_;}
+    q_I_C_(1, 0, 0, 0),
+    p_I_C_(0, 0, 0) {}
+  CalibrationState(const Quaternion<Scalar>& q_I_C,
+                   const Matrix<Scalar, 3, 1>& p_I_C)
+    :q_I_C_(q_I_C),
+     p_I_C_(p_I_C) {}
+  Quaternion<Scalar> q_I_C() const { return q_I_C_;}
+  Matrix<Scalar, 3, 1> p_I_C() const { return p_I_C_;}
 
   static int StateSize() { return kCalibrationStateSize;}
   static int ErrorStateSize() { return kCalibrationErrorStateSize;}
 
-  void SetState(const Quaternion<Scalar>& q_G_I,
-                const Matrix<Scalar, 3, 1>& p_G_I) {
-    q_G_I_ = q_G_I;
-    p_G_I_ = p_G_I;
+  void SetState(const Quaternion<Scalar>& q_I_C,
+                const Matrix<Scalar, 3, 1>& p_I_C) {
+    q_I_C_ = q_I_C;
+    p_I_C_ = p_I_C;
   }
 
   void SetZeroState() {
@@ -169,7 +172,7 @@ class CalibrationState {
 
   Matrix<Scalar, kCalibrationStateSize, 1> GetCalibrationStateVector() const {
     Matrix<Scalar, kCalibrationStateSize, 1> calib_state_vector;
-    calib_state_vector << q_G_I_.coeffs(), p_G_I_;
+    calib_state_vector << q_I_C_.coeffs(), p_I_C_;
     return calib_state_vector;
   }
 
@@ -179,29 +182,32 @@ class CalibrationState {
     CHECK(state_vector.rows() == kCalibrationStateSize)
         << "input calibration state invalid !!!";
     CHECK(state_vector.cols() == 1) << "input calibration state invalid !!!";
-    q_G_I_ = Quaternion<Scalar>(state_vector.head(4).data());
-    q_G_I_.normalize();
-    p_G_I_ = state_vector.block(kQuaterionStateSize, 0, 3, 1);
+    q_I_C_ = Quaternion<Scalar>(state_vector.head(4).data());
+    q_I_C_.normalize();
+    p_I_C_ = state_vector.block(kQuaterionStateSize, 0, 3, 1);
   }
 
   void PrintInfo () {
     LOG(INFO) << "Calibration state: ";
-    LOG(INFO) << "q_G_I: " << q_G_I_.coeffs().transpose();
-    LOG(INFO) << "p_G_I: " << p_G_I_.transpose();
+    LOG(INFO) << "q_G_I: " << q_I_C_.coeffs().transpose();
+    LOG(INFO) << "p_G_I: " << p_I_C_.transpose();
   }
  private:
-  Quaternion<Scalar> q_G_I_;
-  Matrix<Scalar, 3, 1> p_G_I_;
+  Quaternion<Scalar> q_I_C_;
+  Matrix<Scalar, 3, 1> p_I_C_;
 };
 
 template <typename Scalar>
 class KeyFrameState {
  public:
   KeyFrameState():
+    keyframe_id_(0),
     q_G_I_(1, 0, 0, 0),
     p_G_I_(0, 0, 0) {}
-  KeyFrameState(const Quaternion<Scalar>& q_G_I,
+  KeyFrameState(const int keyframe_id,
+                const Quaternion<Scalar>& q_G_I,
                 const Matrix<Scalar, 3, 1>& p_G_I):
+    keyframe_id_(keyframe_id),
     q_G_I_(q_G_I),
     p_G_I_(p_G_I) {}
 
@@ -242,7 +248,19 @@ class KeyFrameState {
     LOG(INFO) << "p_G_I: " << p_G_I_.transpose();
   }
 
+  int keyframe_id() const {
+    return keyframe_id_;
+  }
+
+  Quaternion<Scalar> q_G_I() const {
+    return q_G_I_;
+  }
+  Matrix<Scalar, 3, 1> p_G_I() const {
+    return p_G_I;
+  }
+
  private:
+  int keyframe_id_;
   Quaternion<Scalar> q_G_I_;
   Matrix<Scalar, 3, 1> p_G_I_;
 };
@@ -291,8 +309,10 @@ class EkfState {
   }
 
   int ErrorStateSize() {
-    return imu_state_.ErrorStateSize() + calibration_state_.ErrorStateSize() +
-           keyframe_states_.size() * 6 + landmarks_.size() * 3;
+    return ImuState<Scalar>::ErrorStateSize()
+        + CalibrationState<Scalar>::ErrorStateSize()
+        + keyframe_states_.size() * KeyFrameState<Scalar>::ErrorStateSize()
+        + landmarks_.size() * 3;
   }
 
   Matrix<Scalar, 16, 1> GetImuStateVector() const {
@@ -491,7 +511,7 @@ class EkfState {
     return calibration_state_;
   }
 
-  vector<KeyFrameState<Scalar>> keyframe_states() const {
+  deque<KeyFrameState<Scalar>> keyframe_states() const {
     return keyframe_states_;
   }
 
@@ -503,18 +523,30 @@ class EkfState {
     return covariance_;
   }
 
+  //  get the order of this keyframe in slide window
+  int GetKeyframeIndexById(int keyframe_id) const {
+    for (size_t i = 0; i < keyframe_states_.size(); i++) {
+      if (keyframe_id == keyframe_states_[i].keyframe_id()) {
+        return i;
+      }
+      return -1;
+    }
+  }
+
  private:
   ImuState<Scalar> imu_state_;
 
   CalibrationState<Scalar> calibration_state_;
 
-  vector<KeyFrameState<Scalar>> keyframe_states_;
+  deque<KeyFrameState<Scalar>> keyframe_states_;
 
   vector<Matrix<Scalar, 3, 1>> landmarks_;
 
   Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> covariance_;
 
   double last_update_time_;
+
+  double time_stamp_;
 };
 
 typedef EkfState<double> EkfStated;

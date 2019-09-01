@@ -93,10 +93,6 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
       forw_imu->angular_velocity.x, forw_imu->angular_velocity.y,
       forw_imu->angular_velocity.z;
   double alpha = (interpolate_time - pre_time) / (forw_time - pre_time);
-  // ROS_INFO_STREAM("pre_time is: " << pre_time;);
-  // ROS_INFO_STREAM("forw_time is: " << forw_time;);
-  // ROS_INFO_STREAM("interpolate_time is: " << interpolate_time;);
-  // ROS_INFO_STREAM("alpha is: " << alpha;);
   if (alpha > 1 || alpha < 0) {
     ROS_FATAL_STREAM("InterpolateImu alpha wrong!!! alpha is: " << alpha;);
   }

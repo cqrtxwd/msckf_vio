@@ -13,6 +13,7 @@ namespace ultimate_msckf_vio {
 using std::vector;
 using Eigen::Matrix;
 using Eigen::MatrixXd;
+using std::shared_ptr;
 
 
 class VisualEkfUpdate : public EkfUpdateBase {
@@ -22,7 +23,7 @@ class VisualEkfUpdate : public EkfUpdateBase {
 
   bool IEKFUpdate(EkfStated* ekf_state);
 
-  bool EvaluateJaccobianAndResidual(EkfStated *ekf_state,
+  bool EvaluateJaccobianAndResidual(shared_ptr<EkfStated> ekf_state,
                                     MatrixXd* H,
                                     MatrixXd* residual);
 
@@ -41,12 +42,11 @@ class VisualEkfUpdate : public EkfUpdateBase {
 //    return true;
 //  }
 
-  bool EvaluateJaccobianAndResidualSingleFeature(EkfStated *ekf_state,
-                                                        MatrixXd* H,
-                                                        MatrixXd* residual);
-
-
-
+  bool EvaluateJaccobianAndResidualSingleFeature(
+      shared_ptr<EkfStated> ekf_state,
+      const FeatureBundle& feature_bundle,
+      MatrixXd* H,
+      MatrixXd* res);
 
   void AddVisualConstraints(vector<FeatureBundle>* visual_bundle_constraints);
 

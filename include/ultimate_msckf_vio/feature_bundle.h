@@ -39,7 +39,9 @@ class FeatureBundle {
     observed_uv_.push_back(feature_uv);
   }
 
-  int KeyframeNum() {
+  int NumObservedKeyframe() {
+    CHECK(observed_keframes_id_.size() == observed_uv_.size())
+        << "observed keyframe number error";
     return observed_keframes_id_.size();
   }
 
@@ -62,6 +64,10 @@ class FeatureBundle {
       std::cout << " observed by kf : " << id;
     }
     std::cout << "\n";
+  }
+
+  vector<int> observed_keframes_id() const {
+    return observed_keframes_id_;
   }
 
  private:

@@ -20,9 +20,10 @@ class EkfUpdateBase {
   EkfUpdateBase() {}
 //   ~EkfUpdateBase();
 
-  virtual bool EvaluateJaccobianAndResidual(EkfStated *ekf_state,
-                                            MatrixXd* H,
-                                            MatrixXd* residual) = 0;
+  virtual bool EvaluateJaccobianAndResidual(
+      std::shared_ptr<EkfStated> ekf_state,
+      MatrixXd* H,
+      MatrixXd* residual) = 0;
 
 //  virtual bool ComputeKalmanGain() = 0;
 
