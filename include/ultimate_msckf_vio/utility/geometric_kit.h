@@ -31,6 +31,16 @@ class GeometricKit {
   }
 };
 
+template <typename Scalar>
+static Matrix<Scalar, 3, 3> VectorToSkewSymmetricMatrix(
+    const Matrix<Scalar, 3, 1>& vector) {
+  Matrix<Scalar, 3, 3> skew_symmetric_matrix;
+  skew_symmetric_matrix << 0, - vector(2), vector(1),
+                           vector(2), 0, - vector(0),
+                           - vector(1), vector(0), 0;
+  return skew_symmetric_matrix;
+}
+
 
 }
 

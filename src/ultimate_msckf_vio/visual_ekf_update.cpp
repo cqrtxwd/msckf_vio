@@ -1,10 +1,9 @@
 #include "ultimate_msckf_vio/visual_ekf_update.h"
+#include "ultimate_msckf_vio/utility/geometric_kit.h"
 
 namespace ultimate_msckf_vio {
 
 VisualEkfUpdate::VisualEkfUpdate() {}
-
-
 
 //bool EkfUpdate::IEKFUpdate(EkfStated *ekf_state) {
 //  LOG(INFO) << "IEKFUpdate calls ...";
@@ -50,6 +49,7 @@ bool VisualEkfUpdate::EvaluateJaccobianAndResidual(
  * 3) Marginalize out the 3d features position from state, also known as
  *    "project H_state to H_feature's left-null space"
  * 4) now we get the H and residual of this feature bundle
+ *  (G: gloabl frame;  C: camera frame)
  */
 
 bool VisualEkfUpdate::EvaluateJaccobianAndResidualSingleFeature(
@@ -72,20 +72,13 @@ bool VisualEkfUpdate::EvaluateJaccobianAndResidualSingleFeature(
   Matrix<double, 2, 2> H_intrinsic = intrinsic_matrix.block(0, 0, 2, 2);
 
   // compute jaccobian for each keyframe observation
-  for (size_t i = 0; i < feature_bundle.observed_keframes_id(); i++) {
+  for (size_t i = 0; i < feature_bundle.observed_keframes_id().size(); i++) {
     int keyframei_id = feature_bundle.observed_keframes_id()[i];
     int keyframei_index = ekf_state->GetKeyframeIndexById(keyframei_id);
-    // compute H_state
-
-    // H_state_i_p = H_feature_G = H_intrinsic * H_project * R_C_G * [dth]^
-    Matrix<double, 2, 3> H_state_i_p;
-
-
-
 
     // compute H_feature, hint:
-    // H_feature_C = H_intrinsic * H_project;
-    // H_feature_G = H_intrinsic * H_project * R_C_G
+    // H_feature_C (camera frame) = H_intrinsic * H_project;
+    // H_feature_G (global frame) = H_intrinsic * H_project * R_C_G
     Matrix<double, 2, 3> H_feature_i;
     Matrix<double, 2, 3> H_project_i;
     double z_square = feat_3d(2) * feat_3d(2);
@@ -97,11 +90,37 @@ bool VisualEkfUpdate::EvaluateJaccobianAndResidualSingleFeature(
         .toRotationMatrix().transpose();
     H_feature_i = H_intrinsic * H_project_i * keyframei_R_C_G;
 
-    // insert this jaccobian matrix to H_feature
-    int insert_index = 2 * keyframei_index;
-    H_feature.block(insert_index, 0, 2, 3) = H_feature_i;
+    // compute H_state
+    // H_state_i_p (position of i th keyframe)
+    // H_state_i_p = - H_feature_G;
+    Matrix<double, 2, 3> H_state_i_p = - H_feature_i;
 
+    // H_state_i_q = H_intrinsic * H_project * [T_C_G * G_p_G_feat]^
+    // aka: H_state_i_q = H_intrinsic * H_project * [C_p_C_feat]^
+    Matrix<double, 2, 3> H_state_i_q;
+    Vector3d C_p_C_feat = keyframei_R_C_G * feat_3d;
+    H_state_i_q =
+        H_intrinsic * H_project_i * VectorToSkewSymmetricMatrix(C_p_C_feat);
+    Matrix<double, 2, 6> H_state_i;
+    H_state_i << H_state_i_q, H_state_i_p;
+
+    // insert jaccobian matrix block to H_state and H_feature
+    int feat_insert_index = 2 * keyframei_index;
+    H_feature.block(feat_insert_index, 0, 2, 3) = H_feature_i;
+    int state_insert_row_index = feat_insert_index;
+    int state_insert_col_index =
+        ImuState<double>::ErrorStateSize()
+        + CalibrationState<double>::ErrorStateSize()
+        + keyframei_index * KeyFrameState<double>::ErrorStateSize();
+    H_state.block(state_insert_row_index,
+                  state_insert_col_index, 2, 6) = H_state_i;
   }
+
+  // project H_state to the left-null space of H_feature, to marginalize the
+  // feature state, compressing Jaccobian matrix in cols.
+  // we use givens rotation to achieve that.
+
+
 
 
 

@@ -52,12 +52,14 @@ target_link_libraries(msckf_estimator_lib PUBLIC ${GLOG_LIBRARY} gflags)
 
 add_executable(msckf_estimator_node app/msckf_estimator_node.cpp)
 target_link_libraries(msckf_estimator_node ${catkin_LIBRARIES} msckf_estimator_lib)
-#target_link_libraries(msckf_estimator_node PUBLIC ${GLOG_LIBRARY})
-#target_link_libraries(msckf_estimator_node PUBLIC gflags)
 
+#########
+# test
+#########
 add_executable(test_state_agument test/test_state_agument.cpp)
 target_link_libraries(test_state_agument ${catkin_LIBRARIES} msckf_estimator_lib)
-#target_link_libraries(test_state_agument PUBLIC ${GLOG_LIBRARY})
-#target_link_libraries(test_state_agument PUBLIC gflags)
+
+add_executable(test_geometry test/test_geometry.cpp)
+target_link_libraries(test_geometry ${catkin_LIBRARIES} msckf_estimator_lib)
 
 

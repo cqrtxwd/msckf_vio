@@ -26,7 +26,7 @@ constexpr int kImuStateSize = kQuaterionStateSize + 4 * kVectorStateSize; // 16
 constexpr int kImuErrorStateSize = kQuaterionErrorStateSize + 4 * kVectorErrorStateSize; // 15
 
 constexpr int kCalibrationStateSize = kQuaterionStateSize + kVectorStateSize;
-constexpr int kCalibrationErrorStateSize = kVectorStateSize + kVectorStateSize;
+constexpr int kCalibrationErrorStateSize = kQuaterionErrorStateSize + kVectorStateSize;
 
 constexpr int kKeyframeStateSize = kQuaterionStateSize + kVectorStateSize;
 constexpr int kKeyframeErrorStateSize = kQuaterionErrorStateSize + kVectorStateSize;
@@ -204,6 +204,10 @@ class KeyFrameState {
     keyframe_id_(0),
     q_G_I_(1, 0, 0, 0),
     p_G_I_(0, 0, 0) {}
+  KeyFrameState(const Quaternion<Scalar>& q_G_I,
+                const Matrix<Scalar, 3, 1>& p_G_I):
+    q_G_I_(q_G_I),
+    p_G_I_(p_G_I) {}
   KeyFrameState(const int keyframe_id,
                 const Quaternion<Scalar>& q_G_I,
                 const Matrix<Scalar, 3, 1>& p_G_I):
@@ -308,7 +312,7 @@ class EkfState {
           landmarks_.size() * 3;
   }
 
-  int ErrorStateSize() {
+  int ErrorStateSize() const {
     return ImuState<Scalar>::ErrorStateSize()
         + CalibrationState<Scalar>::ErrorStateSize()
         + keyframe_states_.size() * KeyFrameState<Scalar>::ErrorStateSize()

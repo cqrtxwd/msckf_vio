@@ -7,6 +7,5 @@ my_msckf.includes
 .kdev4/
 ultimate_msckf_vio.kdev4
 my_msckf.cflags
-my_msckf.creator.user.4.9-pre1
 my_msckf.cxxflags
 

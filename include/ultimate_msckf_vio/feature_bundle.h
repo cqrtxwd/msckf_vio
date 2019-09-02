@@ -39,7 +39,7 @@ class FeatureBundle {
     observed_uv_.push_back(feature_uv);
   }
 
-  int NumObservedKeyframe() {
+  int NumObservedKeyframe() const {
     CHECK(observed_keframes_id_.size() == observed_uv_.size())
         << "observed keyframe number error";
     return observed_keframes_id_.size();
