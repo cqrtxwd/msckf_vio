@@ -2,7 +2,6 @@
 #define EKF_STATE_H_
 
 #include <eigen3/Eigen/Eigen>
-#include <ros/ros.h>
 #include <glog/logging.h>
 #include <deque>
 
@@ -69,6 +68,17 @@ class ImuState {
     v_G_I_(0, 0, 0),
     ba_(0, 0, 0),
     p_G_I_(0, 0, 0) {}
+
+  ImuState(const Quaternion<Scalar>& q_G_I,
+           const Matrix<Scalar, 3, 1>& bg,
+           const Matrix<Scalar, 3, 1>& v_G_I,
+           const Matrix<Scalar, 3, 1>& ba,
+           const Matrix<Scalar, 3, 1>& p_G_I):
+    q_G_I_(q_G_I),
+    bg_(bg),
+    v_G_I_(v_G_I),
+    ba_(ba),
+    p_G_I_(p_G_I) {}
 
   Quaternion<Scalar> q_G_I() const { return q_G_I_; }
 
@@ -283,6 +293,26 @@ class EkfState {
     for (int i = 0; i < num_keyframe; i++) {
       keyframe_states_.push_back(KeyFrameState<Scalar>());
     }
+    covariance_.resize(
+          kImuErrorStateSize + kCalibrationErrorStateSize
+          + num_keyframe * KeyFrameState<Scalar>::ErrorStateSize(),
+          kImuErrorStateSize + kCalibrationErrorStateSize
+          + num_keyframe * KeyFrameState<Scalar>::ErrorStateSize());
+    covariance_.setIdentity(
+          kImuErrorStateSize + kCalibrationErrorStateSize
+          + num_keyframe * KeyFrameState<Scalar>::ErrorStateSize(),
+          kImuErrorStateSize + kCalibrationErrorStateSize
+          + num_keyframe * KeyFrameState<Scalar>::ErrorStateSize());
+  }
+
+  EkfState(const ImuState<Scalar>& imu_state,
+           const CalibrationState<Scalar>& calibration_state,
+           const deque<KeyFrameState<Scalar>>& keyframe_states)
+    :last_update_time_(double(0)),
+      imu_state_(imu_state),
+      calibration_state_(calibration_state),
+      keyframe_states_(keyframe_states) {
+    size_t num_keyframe = keyframe_states_.size();
     covariance_.resize(
           kImuErrorStateSize + kCalibrationErrorStateSize
           + num_keyframe * KeyFrameState<Scalar>::ErrorStateSize(),
@@ -530,10 +560,20 @@ class EkfState {
   //  get the order of this keyframe in slide window
   int GetKeyframeIndexById(int keyframe_id) const {
     for (size_t i = 0; i < keyframe_states_.size(); i++) {
+      LOG(INFO) << "debug " <<keyframe_states_[i].keyframe_id();
       if (keyframe_id == keyframe_states_[i].keyframe_id()) {
         return i;
       }
       return -1;
+    }
+  }
+
+  //  get the keyframe state by id
+  KeyFrameState<Scalar> GetKeyframeStateById(int keyframe_id) const {
+    for (size_t i = 0; i < keyframe_states_.size(); i++) {
+      if (keyframe_id == keyframe_states_[i].keyframe_id()) {
+        return keyframe_states_[i];
+      }
     }
   }
 

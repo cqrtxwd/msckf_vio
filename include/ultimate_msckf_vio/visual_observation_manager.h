@@ -1,10 +1,7 @@
 #ifndef VISUAL_OBSERVATION_MANAGER_H_
 #define VISUAL_OBSERVATION_MANAGER_H_
 
-#include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
-#include <eigen3/Eigen/Eigen>
-#include "glog/logging.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/feature_bundle.h"
 #include "ultimate_msckf_vio/ekf_state.h"

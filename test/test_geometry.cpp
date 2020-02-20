@@ -1,4 +1,3 @@
-#include <iostream>
 #include "eigen3/Eigen/Eigen"
 #include "glog/logging.h"
 #include "ultimate_msckf_vio/utility/geometric_kit.h"

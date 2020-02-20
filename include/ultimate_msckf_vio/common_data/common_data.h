@@ -3,7 +3,6 @@
 
 #include <deque>
 #include <eigen3/Eigen/Eigen>
-#include <iostream>
 #include <mutex>
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"

@@ -10,6 +10,7 @@
 namespace ultimate_msckf_vio {
 
 using Eigen::Vector2d;
+using Eigen::Vector3d;
 using std::deque;
 using std::map;
 using std::vector;
@@ -26,6 +27,21 @@ class FeatureBundle {
                 Vector2d feature_uv,
                 VisualManagerInterface* visual_manager_listener)
       : feature_id_(feature_id),
+        ready_to_optimize_(false),
+        optimized_(false),
+//        consecutive_lost_count_(0),
+        visual_manager_listener_(visual_manager_listener) {
+    observed_keframes_id_.push_back(keyframe_id);
+    observed_uv_.push_back(feature_uv);
+  }
+
+  FeatureBundle(int feature_id,
+                int keyframe_id,
+                Vector2d feature_uv,
+                Vector3d feature_3d,
+                VisualManagerInterface* visual_manager_listener)
+      : feature_id_(feature_id),
+        G_p_G_feature_(feature_3d),
         ready_to_optimize_(false),
         optimized_(false),
 //        consecutive_lost_count_(0),
@@ -70,8 +86,17 @@ class FeatureBundle {
     return observed_keframes_id_;
   }
 
+  Eigen::Vector3d G_p_G_feature() const {
+    return G_p_G_feature_;
+  }
+  Eigen::Vector3d& G_p_G_feature_mutable() {
+    return G_p_G_feature_;
+  }
+
  private:
   int feature_id_;
+
+  Eigen::Vector3d G_p_G_feature_;  // position in global frame
 
   vector<int> observed_keframes_id_;
 

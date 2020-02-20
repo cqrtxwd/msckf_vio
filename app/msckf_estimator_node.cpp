@@ -1,15 +1,11 @@
 #include <deque>
-#include <iostream>
 #include <mutex>
 #include <thread>
-#include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include "std_msgs/Bool.h"
 #include "ultimate_msckf_vio/data_manager.h"
-#include "eigen3/Eigen/Eigen"
-#include "glog/logging.h"
 
 using std::deque;
 using std::mutex;

@@ -1,7 +1,6 @@
 #ifndef FEATURE_TRACKER_H_
 #define FEATURE_TRACKER_H_
 
-#include <iostream>
 #include <opencv2/opencv.hpp>
 #include <glog/logging.h>
 #include "cv_bridge/cv_bridge.h"

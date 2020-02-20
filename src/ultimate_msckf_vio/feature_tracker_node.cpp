@@ -1,6 +1,4 @@
 #include <cv_bridge/cv_bridge.h>
-// #include <glog/logging.h>
-#include <iostream>
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/Imu.h"

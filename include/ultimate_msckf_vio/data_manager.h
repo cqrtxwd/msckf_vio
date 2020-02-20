@@ -1,15 +1,10 @@
 #ifndef DATA_MANAGER_H_
 #define DATA_MANAGER_H_
 
-#include <deque>
-#include <eigen3/Eigen/Eigen>
-#include <iostream>
 #include <mutex>
-#include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include <condition_variable>
-#include <glog/logging.h>
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/utility/timer.h"

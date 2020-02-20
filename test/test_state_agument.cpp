@@ -1,6 +1,3 @@
-#include <iostream>
-#include "eigen3/Eigen/Eigen"
-#include "glog/logging.h"
 #include "ultimate_msckf_vio/ekf_state.h"
 
 using namespace ultimate_msckf_vio;
