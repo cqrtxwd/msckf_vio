@@ -34,6 +34,7 @@ add_library(
   src/ultimate_msckf_vio/visual_observation_manager.cpp
   src/ultimate_msckf_vio/feature_bundle.cpp
   src/ultimate_msckf_vio/visual_ekf_update.cpp
+  src/ultimate_msckf_vio/parameter_reader.cpp
 )
 
 catkin_package()
@@ -48,7 +49,7 @@ catkin_package()
 #target_link_libraries(feature_tracker_node ${catkin_LIBRARIES} ${OpenCV_LIBS} featrue_tracker_lib)
 #target_link_libraries(feature_tracker_node PUBLIC ${GLOG_LIBRARY})
 
-target_link_libraries(msckf_estimator_lib PUBLIC ${catkin_LIBRARIES} ${GLOG_LIBRARY} gflags)
+target_link_libraries(msckf_estimator_lib PUBLIC ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GLOG_LIBRARY} gflags)
 
 
 add_executable(msckf_estimator_node app/msckf_estimator_node.cpp)

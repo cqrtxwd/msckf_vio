@@ -6,7 +6,7 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     const SensorMeasurement& measurement) {
   LOG(INFO) << "Initializing";
   frame_count_++;
-  if (frame_count_ >= 3) {
+  if (frame_count_ >= 30) {
     LOG(INFO) << "Initialize done ...";
     // TODO: fix this;
     Quaterniond q(1,0,0,0);
@@ -21,6 +21,31 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     LOG(INFO) << "set cov done";
     estimator_status_ = EstimatorStatus::kNormalStage;
   }
+
+  auto img_msg = measurement.image;
+  map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> cur_image;
+  // now image is only a vector with a lot of feature points info,
+  constexpr int NUM_OF_CAM = 1;
+  for (unsigned int i = 0; i < img_msg->points.size(); i++)
+  {
+      int v = img_msg->channels[0].values[i] + 0.5;
+      int feature_id = v / NUM_OF_CAM;
+      int camera_id = v % NUM_OF_CAM;  // alaways = 0
+      double x = img_msg->points[i].x;
+      double y = img_msg->points[i].y;
+      double z = img_msg->points[i].z;
+      double p_u = img_msg->channels[1].values[i];
+      double p_v = img_msg->channels[2].values[i];
+      double velocity_x = img_msg->channels[3].values[i];
+      double velocity_y = img_msg->channels[4].values[i];
+      CHECK(z == 1);
+      Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
+      xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
+      cur_image[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
+      LOG(INFO) << "v: "<<v;
+      LOG(INFO) << "feature_id: "<<feature_id << " xyz: " << x << y << z;
+  }
+  LOG(FATAL) << "ProcessMeasurementsInitialization done";
 }
 
 void MsckfEstimator::ProcessMeasurementsNormalStage(
@@ -369,6 +394,10 @@ bool MsckfEstimator::ShouldVisualUpdate() {
   // not finish
 
   return false;
+
+}
+
+bool MsckfEstimator::EightPoint() {
 
 }
 

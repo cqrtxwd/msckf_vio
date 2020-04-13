@@ -80,6 +80,8 @@ class MsckfEstimator {
 
   bool ShouldVisualUpdate();
 
+  bool EightPoint();
+
 
  private:
   EstimatorStatus estimator_status_;
