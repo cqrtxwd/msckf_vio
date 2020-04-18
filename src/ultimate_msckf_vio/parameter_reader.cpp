@@ -36,6 +36,8 @@ bool ParameterReader::ReadParametersFromYaml(const std::string& config_path) {
                   0, 0, 1;
 
   PrintParamInfo();
+  Param_loaded = true;
+  return true;
 }
 
 void ParameterReader::PrintParamInfo() {

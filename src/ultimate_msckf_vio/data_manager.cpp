@@ -2,6 +2,12 @@
 
 namespace ultimate_msckf_vio {
 
+DataManager::DataManager(ParameterReader* parameter_reader) : cur_time_(-1) {
+  parameter_reader_.reset(parameter_reader);
+  feature_tracker_.reset(new FeatureTracker(parameter_reader));
+  vio_initializer_.reset(new VIOInitializer());
+}
+
 void DataManager::Process() {
   std::unique_lock<std::mutex> lk(sensor_buf_mutex_);
   process_thread_.wait(lk);
@@ -12,14 +18,34 @@ void DataManager::Process() {
   }
 }
 
-bool DataManager::ReceiveImage(
-    const sensor_msgs::PointCloudConstPtr& image) {
-  sensor_buf_mutex_.lock();
-  images_buf_.push_back(image);
-  sensor_buf_mutex_.unlock();
+bool DataManager::ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image) {
+  LOG(INFO) << "raw image coming";
+  auto cv_image_ptr =
+      cv_bridge::toCvCopy(raw_image, sensor_msgs::image_encodings::MONO8);
+  // normalize image
+  auto clahe = cv::createCLAHE();
+  auto normalized_image = cv_image_ptr->image.clone();
+  clahe->apply(cv_image_ptr->image, normalized_image);
+  std::vector<cv::KeyPoint> key_points;
+  cv::Mat descriptors;
+  feature_tracker_->OnReceiveNormalizedImage(
+        normalized_image, &key_points, &descriptors);
+
+  {
+    std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
+    keypoints_each_frame_.push_back(std::move(key_points));
+    descriptors_each_frame_.push_back(std::move(descriptors));
+    image_timestamps_.push_back(cv_image_ptr->header.stamp);
+  }
 }
 
-bool DataManager::ReceiveImuMeasurement(
+bool DataManager::ReceiveImage(
+    const sensor_msgs::PointCloudConstPtr& image) {
+  std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
+  images_buf_.push_back(image);
+}
+
+void DataManager::ReceiveImuMeasurement(
     const sensor_msgs::ImuConstPtr& imu_msg) {
   // ROS_INFO_STREAM("recieve imudata " << imu_msg->header.stamp.toSec() -
   // kTime0);
@@ -31,7 +57,7 @@ bool DataManager::ReceiveImuMeasurement(
   sensor_buf_mutex_.lock();
   if (images_buf_.empty() || imu_buf_.empty()) {
     sensor_buf_mutex_.unlock();
-    return false;
+    return;
   }
   if (imu_buf_.back()->header.stamp.toSec() >
       images_buf_.front()->header.stamp.toSec()) {
@@ -39,7 +65,7 @@ bool DataManager::ReceiveImuMeasurement(
     process_thread_.notify_one();
   }
   sensor_buf_mutex_.unlock();
-  return true;
+  return;
 }
 
 // cut a piece of imu deque as current measurement
@@ -140,5 +166,6 @@ bool DataManager::ProcessMeasurement(
 
   return true;
 }
+
 
 }  // namespace ultimate_msckf_vio

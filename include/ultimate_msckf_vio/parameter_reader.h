@@ -7,7 +7,9 @@
 
 class ParameterReader {
  public:
-  ParameterReader() {}
+  ParameterReader() {
+    Param_loaded = false;
+  }
 
   bool ReadParametersFromYaml(const std::string& config_path);
 
@@ -25,6 +27,8 @@ class ParameterReader {
   int image_height;
 
   Eigen::Matrix3d intrinsic_mat;
+
+  bool Param_loaded;
 
   double distortion_k1;
   double distortion_k2;

@@ -8,6 +8,12 @@
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/utility/timer.h"
+#include "ultimate_msckf_vio/feature_tracker.h"
+#include "ultimate_msckf_vio/parameter_reader.h"
+#include "ultimate_msckf_vio/vio_initializer.h"
+
+
+
 
 namespace ultimate_msckf_vio {
 
@@ -37,13 +43,15 @@ constexpr double kTime0 = 1.40364e+9 - 3500;
 
 class DataManager {
  public:
-  DataManager() : cur_time_(-1) {}
+  DataManager(ParameterReader* parameter_reader);
 
   void Process();
 
+  bool ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image);
+
   bool ReceiveImage(const sensor_msgs::PointCloudConstPtr& image);
 
-  bool ReceiveImuMeasurement(const sensor_msgs::ImuConstPtr& imu_msg);
+  void ReceiveImuMeasurement(const sensor_msgs::ImuConstPtr& imu_msg);
 
   SensorMeasurement GetSensorMeasurement();
 
@@ -57,8 +65,16 @@ class DataManager {
   mutex sensor_buf_mutex_;
   deque<sensor_msgs::ImuConstPtr> imu_buf_;  // front is the oldest data
   deque<sensor_msgs::PointCloudConstPtr> images_buf_;  // front is the oldest
+
+  deque<ros::Time> image_timestamps_;
+  deque<std::vector<cv::KeyPoint>> keypoints_each_frame_;
+  deque<cv::Mat> descriptors_each_frame_;
+
   std::condition_variable process_thread_;
   MsckfEstimator msckf_estimator_;
+  std::shared_ptr<ParameterReader> parameter_reader_;
+  std::unique_ptr<FeatureTracker> feature_tracker_;
+  std::shared_ptr<VIOInitializer> vio_initializer_;
 };
 
 }  // namespace ultimate_msckf_vio

@@ -6,35 +6,25 @@
 #include "sensor_msgs/PointCloud.h"
 #include "std_msgs/Bool.h"
 #include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <boost/function.hpp>
+
 #include "ultimate_msckf_vio/data_manager.h"
 #include "ultimate_msckf_vio/parameter_reader.h"
 
-#include <opencv2/highgui/highgui.hpp>
 
 using std::deque;
 using std::mutex;
-
-ultimate_msckf_vio::DataManager data_manager;
-
-void ImuCallback(const sensor_msgs::ImuConstPtr& imu_msg) {
-  // LOG(INFO) << "receve imu";
-  data_manager.ReceiveImuMeasurement(imu_msg);
-}
-
-void FeaturesCallback(const sensor_msgs::PointCloudConstPtr& image) {
-  // LOG(INFO) << "receve features";
-  data_manager.ReceiveImage(image);
-}
 
 void RestartCallback(const std_msgs::BoolConstPtr& restart_msg) {
   LOG(INFO) << "receve call back";
 }
 
-void ProcessLoop() {
-  while (true) {
-    data_manager.Process();
-  }
-}
+//void ProcessLoop() {
+//  while (true) {
+//    data_manager.Process();
+//  }
+//}
 
 void RawImageCallBack(const sensor_msgs::ImageConstPtr& raw_image) {
   LOG(INFO) << "raw image coming";
@@ -56,22 +46,31 @@ int main(int argc, char** argv) {
   ros::NodeHandle n;
 
   LOG(INFO) << "hello msckf";
-  LOG(ERROR) << "hello msckf";
 
-  ParameterReader param_reader;
-  param_reader.ReadParametersFromYaml(
+  ParameterReader parameter_reader;
+
+  parameter_reader.ReadParametersFromYaml(
         "/home/cqr/catkin_ws/src/VINS-Mono/config/euroc/euroc_config.yaml");
 
+  ultimate_msckf_vio::DataManager data_manager(&parameter_reader);
+
   ros::Subscriber sub_raw_image =
-      n.subscribe(param_reader.image0_topic, 2000, RawImageCallBack);
+      n.subscribe(parameter_reader.image0_topic, 1000,
+                  boost::function<void(const sensor_msgs::ImageConstPtr&)>(
+                    [&data_manager]
+                    (const sensor_msgs::ImageConstPtr& raw_image) {
+    data_manager.ReceiveRawImage(raw_image);
+  }));
 
-  ros::Subscriber sub_feature =
-      n.subscribe("/feature_tracker/feature", 2000, FeaturesCallback);
-  ros::Subscriber sub_restart =
-      n.subscribe("/feature_tracker/restart", 2000, RestartCallback);
-  ros::Subscriber sub_imu = n.subscribe("imu0", 2000, ImuCallback);
 
-  std::thread process_thread{ProcessLoop};
+  ros::Subscriber sub_imu =
+      n.subscribe("imu0", 2000,
+                  boost::function<void(const sensor_msgs::ImuConstPtr&)>(
+                    [&data_manager](const sensor_msgs::ImuConstPtr& imu_msg) {
+    data_manager.ReceiveImuMeasurement(imu_msg);
+  }));
+
+//  std::thread process_thread{ProcessLoop};
 
   ros::spin();
 
