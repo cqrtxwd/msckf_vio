@@ -1,6 +1,17 @@
 #include "ultimate_msckf_vio/feature_tracker.h"
+#include "ultimate_msckf_vio/data_manager.h"
 
 namespace ultimate_msckf_vio {
+
+FeatureTracker::FeatureTracker(DataManager* data_manager)
+  : image_count_(0), current_time_(-1), previous_time_(-1) {
+  CHECK(data_manager != nullptr)
+      << "data manager haven't initalize";
+  data_manager_.reset(data_manager);
+  CHECK(data_manager_->parameter_reader_ != nullptr)
+      << "parameter_reader in data manager haven't initalize";
+  parameter_reader_.reset(data_manager_->parameter_reader_.get());
+}
 
 void FeatureTracker::ProcessImage(cv_bridge::CvImage current_image) {
   previous_time_ = current_time_;
@@ -53,6 +64,21 @@ void FeatureTracker::UndistortRawImage(
 
 }
 
+void FeatureTracker::FindFeatureMatchesBetweenFrames(
+    const int frame0_id, const int frame1_id,
+    std::vector<cv::DMatch>* good_matches) {
+  std::lock_guard<std::mutex> lock(data_manager_->frame_mutex_);
+  CHECK(std::max(frame0_id, frame1_id) <= data_manager_->frames_.size())
+      << "input frame id invalid, input id : " << frame0_id << ", "<< frame1_id
+      << "while max frame id is : " << data_manager_->frames_.size();
+//  LOG(INFO) << "find " << frame0_id << " " << frame1_id;
+  LOG(INFO) << "data_manager_->frames_.size() " << data_manager_->frames_.size();
+  FindGoodFeatureMatches(data_manager_->frames_[frame0_id].descriptors,
+                         data_manager_->frames_[frame1_id].descriptors,
+                         good_matches);
+  LOG(INFO) << "good_matches" << good_matches->size();
+}
+
 bool FeatureTracker::ComputeOrbFeaturePoints(
     const cv::Mat& image,
     std::vector<cv::KeyPoint>* keypoints,
@@ -61,6 +87,35 @@ bool FeatureTracker::ComputeOrbFeaturePoints(
   orb->detect(image, *keypoints);
   orb->compute(image, *keypoints, *descriptors);
   return true;
+}
+
+void FeatureTracker::FindGoodFeatureMatches(
+    const cv::Mat& prev_descriptors,
+    const cv::Mat& cur_descriptors,
+    std::vector<cv::DMatch>* good_matchs) {
+  std::vector<cv::DMatch> match_pairs;
+  cv::BFMatcher matcher(cv::NORM_HAMMING);
+  matcher.match(prev_descriptors, cur_descriptors, match_pairs);
+  LOG(INFO) << "init match size: " << match_pairs.size();
+
+  double coarse_good_match_threshold = 50.0;
+  std::vector<cv::DMatch> coarse_good_matchs;
+  for (auto& match : match_pairs) {
+    if (match.distance <= coarse_good_match_threshold) {
+      coarse_good_matchs.push_back(std::move(match));
+    }
+  }
+  if (coarse_good_matchs.size() < 50) {
+    LOG(WARNING) << "coarse_good_matchs size < 50 , num is"
+                 << coarse_good_matchs.size();
+  }
+
+  std::sort(coarse_good_matchs.begin(), coarse_good_matchs.end());
+
+  // ensure at least kMinMatchNumInImage(default 300) matches in each image
+   *good_matchs =
+      std::vector<cv::DMatch>(coarse_good_matchs.begin(),
+                              coarse_good_matchs.begin() + kMinMatchNumInImage);
 }
 
 bool FeatureTracker::FindFeatureMatchsByOrb(const cv::Mat& previous_image,

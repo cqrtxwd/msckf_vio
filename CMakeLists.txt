@@ -37,6 +37,8 @@ add_library(
   src/ultimate_msckf_vio/parameter_reader.cpp
   src/ultimate_msckf_vio/feature_tracker.cpp
   src/ultimate_msckf_vio/vio_initializer.cpp
+  src/ultimate_msckf_vio/frame.cpp
+
 )
 
 catkin_package()

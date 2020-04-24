@@ -4,8 +4,8 @@ namespace ultimate_msckf_vio {
 
 DataManager::DataManager(ParameterReader* parameter_reader) : cur_time_(-1) {
   parameter_reader_.reset(parameter_reader);
-  feature_tracker_.reset(new FeatureTracker(parameter_reader));
-  vio_initializer_.reset(new VIOInitializer());
+  feature_tracker_.reset(new FeatureTracker(this));
+  vio_initializer_.reset(new VIOInitializer(this));
 }
 
 void DataManager::Process() {
@@ -31,19 +31,26 @@ bool DataManager::ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image) {
   feature_tracker_->OnReceiveNormalizedImage(
         normalized_image, &key_points, &descriptors);
 
-  {
-    std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
-    keypoints_each_frame_.push_back(std::move(key_points));
-    descriptors_each_frame_.push_back(std::move(descriptors));
-    image_timestamps_.push_back(cv_image_ptr->header.stamp);
+  auto new_frame_id =
+      AddFrame(cv_image_ptr->header.stamp, key_points, descriptors);
+  LOG(INFO) << "build frame " << new_frame_id;
+  LOG(INFO) << frames_.back().keypoints.size() << " " << frames_.back().timestamp.toSec();
+
+  // try initalize
+  if (!vio_initializer_->is_initialized()) {
+    if (vio_initializer_->TryInitialize()) {
+      LOG(INFO) << "================= Initialize success ================";
+    } else {
+      LOG(INFO) << "not initialize yet";
+    }
   }
 }
 
-bool DataManager::ReceiveImage(
-    const sensor_msgs::PointCloudConstPtr& image) {
-  std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
-  images_buf_.push_back(image);
-}
+//bool DataManager::ReceiveImage(
+//    const sensor_msgs::PointCloudConstPtr& image) {
+//  std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
+//  images_buf_.push_back(image);
+//}
 
 void DataManager::ReceiveImuMeasurement(
     const sensor_msgs::ImuConstPtr& imu_msg) {
@@ -137,6 +144,18 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
 
   ImuConstPtr result_imu_constptr = ImuConstPtr(&result_imu);
   return result_imu_constptr;
+}
+
+int DataManager::AddFrame(const ros::Time& timestamp,
+                          std::vector<cv::KeyPoint>& keypoints,
+                          cv::Mat& descriptors) {
+  std::lock_guard<std::mutex> lock(frame_mutex_);
+  int new_frame_id = frames_.size();
+  frames_.emplace_back(new_frame_id,
+                       timestamp,
+                       keypoints,
+                       descriptors);
+  return new_frame_id;
 }
 
 bool DataManager::ProcessMeasurement(

@@ -13,12 +13,12 @@ namespace ultimate_msckf_vio {
 constexpr int kMaxKeyPointsNumEachImage = 2000;
 constexpr int kMinMatchNumInImage = 300;
 
+
+class DataManager;
+
 class FeatureTracker {
  public:
-  FeatureTracker(ParameterReader* parameter_reader)
-    : image_count_(0), current_time_(-1), previous_time_(-1) {
-    parameter_reader_.reset(parameter_reader);
-  }
+  FeatureTracker(DataManager* data_manager);
 
   void ProcessImage(cv_bridge::CvImage current_image);
 
@@ -29,10 +29,18 @@ class FeatureTracker {
   // this func only for showing
   void UndistortRawImage(const cv::Mat& raw_image, cv::Mat* undistort_image);
 
+  void FindFeatureMatchesBetweenFrames(const int frame0_id,
+                                       const int frame1_id,
+                                       std::vector<cv::DMatch>* good_matches);
+
  private:
   bool ComputeOrbFeaturePoints(const cv::Mat& image,
                                std::vector<cv::KeyPoint>* keypoints,
                                cv::Mat* descriptors);
+
+  void FindGoodFeatureMatches(const cv::Mat& prev_descriptors,
+                              const cv::Mat& cur_descriptors,
+                              std::vector<cv::DMatch>* good_matchs);
 
   bool FindFeatureMatchsByOrb(const cv::Mat& image_0,
                               const cv::Mat& image_1,
@@ -51,6 +59,7 @@ class FeatureTracker {
   std::vector<cv::Point2f> current_points_;
   std::vector<cv::Point2f> previous_points_;
   std::shared_ptr<ParameterReader> parameter_reader_;
+  std::shared_ptr<DataManager> data_manager_;
 //  cv::Ptr<cv::ORB> orb_;
 };
 
