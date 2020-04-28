@@ -13,9 +13,15 @@ class Frame {
         std::vector<cv::KeyPoint>& tmp_keypoints,
         cv::Mat& tmp_descriptors);
 
+  Frame(const int tmp_id,
+        const ros::Time& tmp_image_timestamp,
+        std::vector<cv::Point2d>& undistort_keypoints,
+        cv::Mat& tmp_descriptors);
+
   int id;
   ros::Time timestamp;
   std::vector<cv::KeyPoint> keypoints;
+  std::vector<cv::Point2d> undistort_keypoints;
   cv::Mat descriptors;
 
  private:

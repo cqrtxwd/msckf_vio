@@ -2,6 +2,8 @@
 #define VIO_INITIALIZER_H
 
 #include <memory>
+#include "ultimate_msckf_vio/frame.h"
+#include "ultimate_msckf_vio/utility/pose.h"
 
 namespace ultimate_msckf_vio {
 
@@ -18,6 +20,23 @@ class VIOInitializer {
   bool is_initialized();
 
   bool TryInitialize();
+
+  bool SolveEpipolarGeometryOf2Frames(
+      const Frame& frame0,
+      const Frame& frame1,
+      Pose3d* result_pose);
+
+  bool SolveEpipolarGeometryOf2Frames(
+      const Frame& frame0,
+      const Frame& frame1,
+      const std::vector<cv::DMatch>& feature_matches,
+      Pose3d* result_pose);
+
+  bool SolveEpipolarGeometryOf2Frames(
+      const int& frame0_id,
+      const int& frame1_id,
+      const std::vector<cv::DMatch>& feature_matches,
+      Pose3d* result_pose);
 
  private:
 

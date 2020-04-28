@@ -13,6 +13,15 @@ FeatureTracker::FeatureTracker(DataManager* data_manager)
   parameter_reader_.reset(data_manager_->parameter_reader_.get());
 }
 
+cv::Point2d FeatureTracker::PixelToCam(const cv::Point2d& pixel_point,
+                                       const Eigen::Matrix3d& K) {
+  Eigen::Vector3d pixel_point_eigen(pixel_point.x, pixel_point.y, 1.0);
+  Eigen::Vector3d cam_point_eigen = K.inverse() * pixel_point_eigen;
+
+  cv::Point2d cam_point(cam_point_eigen.x(), cam_point_eigen.y());
+  return cam_point;
+}
+
 void FeatureTracker::ProcessImage(cv_bridge::CvImage current_image) {
   previous_time_ = current_time_;
   current_time_ = current_image.header.stamp.toSec();
@@ -41,12 +50,6 @@ void FeatureTracker::OnReceiveNormalizedImage(
     cv::Mat* descriptors) {
   LOG(INFO) << "normalized image coming";
 
-  if (current_image_.empty()) {
-    current_image_ = normalized_image;
-    return;
-  }
-  previous_image_ = current_image_;
-  current_image_ = normalized_image;
   // compute orb feature
   ComputeOrbFeaturePoints(normalized_image, key_points, descriptors);
 
@@ -71,12 +74,29 @@ void FeatureTracker::FindFeatureMatchesBetweenFrames(
   CHECK(std::max(frame0_id, frame1_id) <= data_manager_->frames_.size())
       << "input frame id invalid, input id : " << frame0_id << ", "<< frame1_id
       << "while max frame id is : " << data_manager_->frames_.size();
-//  LOG(INFO) << "find " << frame0_id << " " << frame1_id;
-  LOG(INFO) << "data_manager_->frames_.size() " << data_manager_->frames_.size();
-  FindGoodFeatureMatches(data_manager_->frames_[frame0_id].descriptors,
-                         data_manager_->frames_[frame1_id].descriptors,
+  FindFeatureMatchesBetweenFrames(data_manager_->GetFrameById(frame0_id),
+                                  data_manager_->GetFrameById(frame1_id),
+                                  good_matches);
+}
+
+void FeatureTracker::FindFeatureMatchesBetweenFrames(
+    const Frame& frame0, const Frame& frame1,
+    std::vector<cv::DMatch>* good_matches) {
+  FindGoodFeatureMatches(frame0.descriptors,
+                         frame1.descriptors,
                          good_matches);
-  LOG(INFO) << "good_matches" << good_matches->size();
+}
+
+void FeatureTracker::UndistortFrameKeyPoints(Frame* frame) {
+  frame->undistort_keypoints = std::move(UndistortKeyPoints(frame->keypoints));
+}
+
+void FeatureTracker::UndistortFrameKeyPoints(int frame_id) {
+  CHECK(frame_id < data_manager_->frames_.size() && frame_id >= 0)
+      << "frame id invalid !!!";
+  auto& frame = data_manager_->frames_[frame_id];
+  UndistortFrameKeyPoints(&frame);
+  LOG(INFO) << "undistort_keypoints " << frame.undistort_keypoints.size();
 }
 
 bool FeatureTracker::ComputeOrbFeaturePoints(
@@ -96,7 +116,8 @@ void FeatureTracker::FindGoodFeatureMatches(
   std::vector<cv::DMatch> match_pairs;
   cv::BFMatcher matcher(cv::NORM_HAMMING);
   matcher.match(prev_descriptors, cur_descriptors, match_pairs);
-  LOG(INFO) << "init match size: " << match_pairs.size();
+
+  CHECK(match_pairs.size() > 0) << "no feature match between 2 frame !!!";
 
   double coarse_good_match_threshold = 50.0;
   std::vector<cv::DMatch> coarse_good_matchs;
@@ -109,13 +130,14 @@ void FeatureTracker::FindGoodFeatureMatches(
     LOG(WARNING) << "coarse_good_matchs size < 50 , num is"
                  << coarse_good_matchs.size();
   }
+  *good_matchs = std::move(coarse_good_matchs);
 
-  std::sort(coarse_good_matchs.begin(), coarse_good_matchs.end());
+//  std::sort(coarse_good_matchs.begin(), coarse_good_matchs.end());
 
-  // ensure at least kMinMatchNumInImage(default 300) matches in each image
-   *good_matchs =
-      std::vector<cv::DMatch>(coarse_good_matchs.begin(),
-                              coarse_good_matchs.begin() + kMinMatchNumInImage);
+//  // ensure at least kMinMatchNumInImage(default 300) matches in each image
+//   *good_matchs =
+//      std::vector<cv::DMatch>(coarse_good_matchs.begin(),
+//                              coarse_good_matchs.begin() + kMinMatchNumInImage);
 }
 
 bool FeatureTracker::FindFeatureMatchsByOrb(const cv::Mat& previous_image,
@@ -161,6 +183,56 @@ bool FeatureTracker::FindFeatureMatchsByOrb(const cv::Mat& previous_image,
   cv::waitKey(5);
   LOG(INFO) << "found good match " << final_good_matchs.size();
 
+}
+
+std::vector<cv::Point2d> FeatureTracker::UndistortKeyPoints(
+    const std::vector<cv::KeyPoint>& keypoints) {
+  CHECK(!keypoints.empty()) << "keypoints to be undistort is empty !!!";
+  std::vector<cv::Point2d> undistort_keypoints;
+  undistort_keypoints.reserve(keypoints.size());
+  for (auto distorted_keypoint : keypoints) {
+    undistort_keypoints.push_back(
+          std::move(UndistortSinglePoint(distorted_keypoint)));
+  }
+  return undistort_keypoints;
+}
+
+cv::Point2d FeatureTracker::UndistortSinglePoint(
+    const cv::KeyPoint& distorted_point) {
+  // inverse distortion model
+  double k1 = parameter_reader_->distortion_k1;
+  double k2 = parameter_reader_->distortion_k2;
+  double p1 = parameter_reader_->distortion_p1;
+  double p2 = parameter_reader_->distortion_p2;
+  Matrix3d K_inv = parameter_reader_->intrinsic_mat.inverse();
+  double u = distorted_point.pt.x;
+  double v = distorted_point.pt.y;
+  Eigen::Vector3d norm_p = K_inv * Eigen::Vector3d(u, v, 1);
+
+  double x_distort = norm_p.x();
+  double y_distort = norm_p.y();
+
+  double xy_distort = x_distort * y_distort;
+  double x2_distort = x_distort * x_distort;
+  double y2_distort = y_distort * y_distort;
+  double r2_distort = x2_distort + y2_distort;
+  double r4_distort = r2_distort * r2_distort;
+  double rad_dist = k1 * r2_distort + k2 * r4_distort;
+  double ten_dist_x = 2 * p1 * xy_distort + p2 * (r2_distort + 2 * x2_distort);
+  double ten_dist_y = p1 * (r2_distort + 2 * y2_distort) + 2 * p2 * xy_distort;
+  double dist_x = (1 + rad_dist) * x_distort + ten_dist_x;
+  double dist_y = (1 + rad_dist) * y_distort + ten_dist_y;
+  double inv_denom =
+      1 / (1 + 4 * k1 * r2_distort
+           + 6 * k2 * r4_distort
+           + 8 * p1 * y_distort
+           + 8 * p2 * x_distort);
+
+  double x_undistort = x_distort - inv_denom * dist_x;
+  double y_undistort = y_distort - inv_denom * dist_y;
+
+  cv::Point2d undistort_point(x_undistort, y_undistort);
+  return undistort_point;
 }
 
 }  // namespace ultimate_msckf_vio

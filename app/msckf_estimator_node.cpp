@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
     data_manager.ReceiveImuMeasurement(imu_msg);
   }));
 
+
 //  std::thread process_thread{ProcessLoop};
 
   ros::spin();

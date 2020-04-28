@@ -7,6 +7,7 @@
 #include <ros/ros.h>
 
 #include "ultimate_msckf_vio/parameter_reader.h"
+#include "ultimate_msckf_vio/frame.h"
 
 namespace ultimate_msckf_vio {
 
@@ -20,6 +21,9 @@ class FeatureTracker {
  public:
   FeatureTracker(DataManager* data_manager);
 
+  static cv::Point2d PixelToCam(const cv::Point2d& pixel_point,
+                                const Eigen::Matrix3d& K);
+
   void ProcessImage(cv_bridge::CvImage current_image);
 
   void OnReceiveNormalizedImage(const cv::Mat& normalized_image,
@@ -32,6 +36,16 @@ class FeatureTracker {
   void FindFeatureMatchesBetweenFrames(const int frame0_id,
                                        const int frame1_id,
                                        std::vector<cv::DMatch>* good_matches);
+
+  void FindFeatureMatchesBetweenFrames(const Frame& frame0,
+                                       const Frame& frame1,
+                                       std::vector<cv::DMatch>* good_matches);
+
+  void UndistortFrameKeyPoints(Frame* frame);
+
+  void UndistortFrameKeyPoints(int frame_id);
+
+
 
  private:
   bool ComputeOrbFeaturePoints(const cv::Mat& image,
@@ -47,6 +61,11 @@ class FeatureTracker {
                               const int min_feature_num = kMinMatchNumInImage);
 
   bool FindFeatureMatchsByLK();
+
+  std::vector<cv::Point2d> UndistortKeyPoints(
+      const std::vector<cv::KeyPoint>& keypoints);
+
+  cv::Point2d UndistortSinglePoint(const cv::KeyPoint& distorted_point);
 
 
   int image_count_;

@@ -57,6 +57,8 @@ class DataManager {
 
   bool ProcessMeasurement(const SensorMeasurement&);
 
+  Frame& GetFrameById(const int frame_id);
+
  private:
   ImuConstPtr InterpolateImu(const double&, const ImuConstPtr&,
                              const ImuConstPtr&);

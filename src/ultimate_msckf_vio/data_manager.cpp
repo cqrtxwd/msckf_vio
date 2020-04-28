@@ -26,6 +26,9 @@ bool DataManager::ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image) {
   auto clahe = cv::createCLAHE();
   auto normalized_image = cv_image_ptr->image.clone();
   clahe->apply(cv_image_ptr->image, normalized_image);
+
+  // undistort image
+
   std::vector<cv::KeyPoint> key_points;
   cv::Mat descriptors;
   feature_tracker_->OnReceiveNormalizedImage(
@@ -34,7 +37,8 @@ bool DataManager::ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image) {
   auto new_frame_id =
       AddFrame(cv_image_ptr->header.stamp, key_points, descriptors);
   LOG(INFO) << "build frame " << new_frame_id;
-  LOG(INFO) << frames_.back().keypoints.size() << " " << frames_.back().timestamp.toSec();
+  LOG(INFO) << frames_.back().keypoints.size() << " "
+            << std::setprecision(15) << frames_.back().timestamp.toSec();
 
   // try initalize
   if (!vio_initializer_->is_initialized()) {
@@ -184,6 +188,10 @@ bool DataManager::ProcessMeasurement(
 
 
   return true;
+}
+
+Frame& DataManager::GetFrameById(const int frame_id) {
+  return frames_[frame_id];
 }
 
 
