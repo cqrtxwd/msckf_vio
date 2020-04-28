@@ -11,10 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
 )
 
-
 set(GLOG_LIBRARY glog)
 include_directories(${GLOG_INCLUDE_DIRS})
-
 
 find_package(OpenCV REQUIRED)
 
@@ -36,6 +34,11 @@ add_library(
   src/ultimate_msckf_vio/visual_observation_manager.cpp
   src/ultimate_msckf_vio/feature_bundle.cpp
   src/ultimate_msckf_vio/visual_ekf_update.cpp
+  src/ultimate_msckf_vio/parameter_reader.cpp
+  src/ultimate_msckf_vio/feature_tracker.cpp
+  src/ultimate_msckf_vio/vio_initializer.cpp
+  src/ultimate_msckf_vio/frame.cpp
+
 )
 
 catkin_package()
@@ -50,16 +53,22 @@ catkin_package()
 #target_link_libraries(feature_tracker_node ${catkin_LIBRARIES} ${OpenCV_LIBS} featrue_tracker_lib)
 #target_link_libraries(feature_tracker_node PUBLIC ${GLOG_LIBRARY})
 
-target_link_libraries(msckf_estimator_lib PUBLIC ${GLOG_LIBRARY} gflags)
+target_link_libraries(msckf_estimator_lib PUBLIC ${catkin_LIBRARIES} ${OpenCV_LIBS} ${GLOG_LIBRARY} gflags)
+
 
 add_executable(msckf_estimator_node app/msckf_estimator_node.cpp)
 target_link_libraries(msckf_estimator_node ${catkin_LIBRARIES} msckf_estimator_lib)
-#target_link_libraries(msckf_estimator_node PUBLIC ${GLOG_LIBRARY})
-#target_link_libraries(msckf_estimator_node PUBLIC gflags)
 
-add_executable(test_state_agument test/test_state_agument.cpp)
-target_link_libraries(test_state_agument ${catkin_LIBRARIES} msckf_estimator_lib)
-#target_link_libraries(test_state_agument PUBLIC ${GLOG_LIBRARY})
-#target_link_libraries(test_state_agument PUBLIC gflags)
+#########
+# test
+#########
+#add_executable(test_state_agument test/test_state_agument.cpp)
+#target_link_libraries(test_state_agument ${catkin_LIBRARIES} msckf_estimator_lib)
+
+#add_executable(test_geometry test/test_geometry.cpp)
+#target_link_libraries(test_geometry ${catkin_LIBRARIES} msckf_estimator_lib)
+
+add_executable(test_jaccobian test/test_jaccobian.cpp)
+target_link_libraries(test_jaccobian msckf_estimator_lib)
 
 

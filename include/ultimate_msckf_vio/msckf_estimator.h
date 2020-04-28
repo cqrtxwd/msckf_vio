@@ -1,11 +1,6 @@
 #ifndef MSCKF_ESTIMATOR_H_
 #define MSCKF_ESTIMATOR_H_
 
-#include <deque>
-#include <eigen3/Eigen/Eigen>
-#include <iostream>
-#include "ros/ros.h"
-#include "glog/logging.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
@@ -84,6 +79,8 @@ class MsckfEstimator {
   bool ShouldMarginalize();
 
   bool ShouldVisualUpdate();
+
+  bool EightPoint();
 
 
  private:

@@ -1,18 +1,19 @@
 #ifndef DATA_MANAGER_H_
 #define DATA_MANAGER_H_
 
-#include <deque>
-#include <eigen3/Eigen/Eigen>
-#include <iostream>
 #include <mutex>
-#include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud.h"
 #include <condition_variable>
-#include <glog/logging.h>
 #include "ultimate_msckf_vio/msckf_estimator.h"
 #include "ultimate_msckf_vio/common_data/common_data.h"
 #include "ultimate_msckf_vio/utility/timer.h"
+#include "ultimate_msckf_vio/feature_tracker.h"
+#include "ultimate_msckf_vio/parameter_reader.h"
+#include "ultimate_msckf_vio/vio_initializer.h"
+#include "ultimate_msckf_vio/frame.h"
+
+
 
 namespace ultimate_msckf_vio {
 
@@ -27,43 +28,65 @@ using std::mutex;
 using std::pair;
 using std::vector;
 
-// for debug
-constexpr double kTime0 = 1.40364e+9 - 3500;
 
-//struct SensorMeasurement {
-//  // SensorMeasurement(deque<ImuConstPtr> imu, PointCloudConstPtr img_msg) {
-//  //   imu_measurements = imu;
-//  //   image = img_msg;
-//  // }
+/*
+ * class graph:
+ *  DataManager
+ *      |-FeatureTracker
+ *      |-MsckfEstimator
+ *      |-VIOInitializer
+ *      |
+ *      |
+ */
 
-//  deque<ImuConstPtr> imu_measurements;
-//  PointCloudConstPtr image;
-//};
+
 
 class DataManager {
  public:
-  DataManager() : cur_time_(-1) {}
+  DataManager(ParameterReader* parameter_reader);
 
   void Process();
 
-  bool ReceiveImage(const sensor_msgs::PointCloudConstPtr& image);
+  bool ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image);
 
-  bool ReceiveImuMeasurement(const sensor_msgs::ImuConstPtr& imu_msg);
+//  bool ReceiveImage(const sensor_msgs::PointCloudConstPtr& image);
+
+  void ReceiveImuMeasurement(const sensor_msgs::ImuConstPtr& imu_msg);
 
   SensorMeasurement GetSensorMeasurement();
 
   bool ProcessMeasurement(const SensorMeasurement&);
 
+  Frame& GetFrameById(const int frame_id);
+
  private:
   ImuConstPtr InterpolateImu(const double&, const ImuConstPtr&,
                              const ImuConstPtr&);
 
+  int AddFrame(const ros::Time& timestamp,
+               std::vector<cv::KeyPoint>& keypoints,
+               cv::Mat& descriptors);
+
   double cur_time_;
-  mutex sensor_buf_mutex_;
   deque<sensor_msgs::ImuConstPtr> imu_buf_;  // front is the oldest data
   deque<sensor_msgs::PointCloudConstPtr> images_buf_;  // front is the oldest
+
+  deque<Frame> frames_; // guarded by frame_mutex_
+
+  // 3d point_cloud
+  std::map<int /* feature id */, Eigen::Vector3d> point_cloud_;
+
   std::condition_variable process_thread_;
   MsckfEstimator msckf_estimator_;
+  std::shared_ptr<ParameterReader> parameter_reader_;
+  friend class FeatureTracker;
+  std::unique_ptr<FeatureTracker> feature_tracker_;
+  friend class VIOInitializer;
+  std::shared_ptr<VIOInitializer> vio_initializer_;
+
+  std::mutex frame_mutex_;
+  std::mutex sensor_buf_mutex_;
+
 };
 
 }  // namespace ultimate_msckf_vio

@@ -2,6 +2,12 @@
 
 namespace ultimate_msckf_vio {
 
+DataManager::DataManager(ParameterReader* parameter_reader) : cur_time_(-1) {
+  parameter_reader_.reset(parameter_reader);
+  feature_tracker_.reset(new FeatureTracker(this));
+  vio_initializer_.reset(new VIOInitializer(this));
+}
+
 void DataManager::Process() {
   std::unique_lock<std::mutex> lk(sensor_buf_mutex_);
   process_thread_.wait(lk);
@@ -12,14 +18,45 @@ void DataManager::Process() {
   }
 }
 
-bool DataManager::ReceiveImage(
-    const sensor_msgs::PointCloudConstPtr& image) {
-  sensor_buf_mutex_.lock();
-  images_buf_.push_back(image);
-  sensor_buf_mutex_.unlock();
+bool DataManager::ReceiveRawImage(const sensor_msgs::ImageConstPtr& raw_image) {
+  LOG(INFO) << "raw image coming";
+  auto cv_image_ptr =
+      cv_bridge::toCvCopy(raw_image, sensor_msgs::image_encodings::MONO8);
+  // normalize image
+  auto clahe = cv::createCLAHE();
+  auto normalized_image = cv_image_ptr->image.clone();
+  clahe->apply(cv_image_ptr->image, normalized_image);
+
+  // undistort image
+
+  std::vector<cv::KeyPoint> key_points;
+  cv::Mat descriptors;
+  feature_tracker_->OnReceiveNormalizedImage(
+        normalized_image, &key_points, &descriptors);
+
+  auto new_frame_id =
+      AddFrame(cv_image_ptr->header.stamp, key_points, descriptors);
+  LOG(INFO) << "build frame " << new_frame_id;
+  LOG(INFO) << frames_.back().keypoints.size() << " "
+            << std::setprecision(15) << frames_.back().timestamp.toSec();
+
+  // try initalize
+  if (!vio_initializer_->is_initialized()) {
+    if (vio_initializer_->TryInitialize()) {
+      LOG(INFO) << "================= Initialize success ================";
+    } else {
+      LOG(INFO) << "not initialize yet";
+    }
+  }
 }
 
-bool DataManager::ReceiveImuMeasurement(
+//bool DataManager::ReceiveImage(
+//    const sensor_msgs::PointCloudConstPtr& image) {
+//  std::lock_guard<std::mutex> lock(sensor_buf_mutex_);
+//  images_buf_.push_back(image);
+//}
+
+void DataManager::ReceiveImuMeasurement(
     const sensor_msgs::ImuConstPtr& imu_msg) {
   // ROS_INFO_STREAM("recieve imudata " << imu_msg->header.stamp.toSec() -
   // kTime0);
@@ -31,7 +68,7 @@ bool DataManager::ReceiveImuMeasurement(
   sensor_buf_mutex_.lock();
   if (images_buf_.empty() || imu_buf_.empty()) {
     sensor_buf_mutex_.unlock();
-    return false;
+    return;
   }
   if (imu_buf_.back()->header.stamp.toSec() >
       images_buf_.front()->header.stamp.toSec()) {
@@ -39,7 +76,7 @@ bool DataManager::ReceiveImuMeasurement(
     process_thread_.notify_one();
   }
   sensor_buf_mutex_.unlock();
-  return true;
+  return;
 }
 
 // cut a piece of imu deque as current measurement
@@ -93,10 +130,6 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
       forw_imu->angular_velocity.x, forw_imu->angular_velocity.y,
       forw_imu->angular_velocity.z;
   double alpha = (interpolate_time - pre_time) / (forw_time - pre_time);
-  // ROS_INFO_STREAM("pre_time is: " << pre_time;);
-  // ROS_INFO_STREAM("forw_time is: " << forw_time;);
-  // ROS_INFO_STREAM("interpolate_time is: " << interpolate_time;);
-  // ROS_INFO_STREAM("alpha is: " << alpha;);
   if (alpha > 1 || alpha < 0) {
     ROS_FATAL_STREAM("InterpolateImu alpha wrong!!! alpha is: " << alpha;);
   }
@@ -115,6 +148,18 @@ ImuConstPtr DataManager::InterpolateImu(const double& interpolate_time,
 
   ImuConstPtr result_imu_constptr = ImuConstPtr(&result_imu);
   return result_imu_constptr;
+}
+
+int DataManager::AddFrame(const ros::Time& timestamp,
+                          std::vector<cv::KeyPoint>& keypoints,
+                          cv::Mat& descriptors) {
+  std::lock_guard<std::mutex> lock(frame_mutex_);
+  int new_frame_id = frames_.size();
+  frames_.emplace_back(new_frame_id,
+                       timestamp,
+                       keypoints,
+                       descriptors);
+  return new_frame_id;
 }
 
 bool DataManager::ProcessMeasurement(
@@ -144,5 +189,10 @@ bool DataManager::ProcessMeasurement(
 
   return true;
 }
+
+Frame& DataManager::GetFrameById(const int frame_id) {
+  return frames_[frame_id];
+}
+
 
 }  // namespace ultimate_msckf_vio

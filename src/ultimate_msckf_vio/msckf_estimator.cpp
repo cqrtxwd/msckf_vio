@@ -6,7 +6,7 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     const SensorMeasurement& measurement) {
   LOG(INFO) << "Initializing";
   frame_count_++;
-  if (frame_count_ >= 3) {
+  if (frame_count_ >= 30) {
     LOG(INFO) << "Initialize done ...";
     // TODO: fix this;
     Quaterniond q(1,0,0,0);
@@ -21,6 +21,31 @@ void MsckfEstimator::ProcessMeasurementsInitialization(
     LOG(INFO) << "set cov done";
     estimator_status_ = EstimatorStatus::kNormalStage;
   }
+
+  auto img_msg = measurement.image;
+  map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> cur_image;
+  // now image is only a vector with a lot of feature points info,
+  constexpr int NUM_OF_CAM = 1;
+  for (unsigned int i = 0; i < img_msg->points.size(); i++)
+  {
+      int v = img_msg->channels[0].values[i] + 0.5;
+      int feature_id = v / NUM_OF_CAM;
+      int camera_id = v % NUM_OF_CAM;  // alaways = 0
+      double x = img_msg->points[i].x;
+      double y = img_msg->points[i].y;
+      double z = img_msg->points[i].z;
+      double p_u = img_msg->channels[1].values[i];
+      double p_v = img_msg->channels[2].values[i];
+      double velocity_x = img_msg->channels[3].values[i];
+      double velocity_y = img_msg->channels[4].values[i];
+      CHECK(z == 1);
+      Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
+      xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
+      cur_image[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
+      LOG(INFO) << "v: "<<v;
+      LOG(INFO) << "feature_id: "<<feature_id << " xyz: " << x << y << z;
+  }
+  LOG(FATAL) << "ProcessMeasurementsInitialization done";
 }
 
 void MsckfEstimator::ProcessMeasurementsNormalStage(
@@ -263,7 +288,7 @@ bool MsckfEstimator::PropagateEkfStateAndPhiByRungeKutta(
                       2 * k3_derivative +
                       k4_derivative) / 6;
   final_state = state_vector + delta_t * final_derivative;
-  ekf_state->SetImuStateVector(final_state);
+  ekf_state->SetImuStateFromVector(final_state);
   LOG(INFO) << "final_state:  " << final_state;
 
   final_phi_derivative = (k1_phi_derivative +
@@ -282,7 +307,7 @@ void MsckfEstimator::SetInitialState(const Eigen::Quaterniond& q,
                                      const Eigen::Vector3d& p) {
   Matrix<double, 16, 1> init_state_vector;
   init_state_vector << q.coeffs(), bg, v, ba, p;
-  ekf_state_.SetImuStateVector(init_state_vector);
+  ekf_state_.SetImuStateFromVector(init_state_vector);
 }
 
 bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
@@ -314,27 +339,27 @@ bool MsckfEstimator::PropagateStateByRungeKuttaSingleStep(
           state_vector.head(4)).normalized().toRotationMatrix();
     Vector3d v_derivative = I_R_G.transpose() * accel_body + gravity;
     Vector3d ba_derivative = Vector3d(0, 0, 0);
-    Vector3d p_derivative = state_vector.block<3, 1>(kVStateIndex, 0);
+    Vector3d p_derivative = state_vector.block<3, 1>(kImuVStateIndex, 0);
 
-    derivative_vector->block<4, 1>(kQStateIndex, 0) = q_derivative;
-    derivative_vector->block<3, 1>(kBgStateIndex, 0) = bg_derivative;
-    derivative_vector->block<3, 1>(kVStateIndex, 0) = v_derivative;
-    derivative_vector->block<3, 1>(kBaStateIndex, 0) = ba_derivative;
-    derivative_vector->block<3, 1>(kPStateIndex, 0) = p_derivative;
+    derivative_vector->block<4, 1>(kImuQStateIndex, 0) = q_derivative;
+    derivative_vector->block<3, 1>(kImuBgStateIndex, 0) = bg_derivative;
+    derivative_vector->block<3, 1>(kImuVStateIndex, 0) = v_derivative;
+    derivative_vector->block<3, 1>(kImuBaStateIndex, 0) = ba_derivative;
+    derivative_vector->block<3, 1>(kImuPStateIndex, 0) = p_derivative;
 //    LOG(INFO) << "derivative "<< derivative_vector->transpose();
 
     // propagate state_transition_matrix
     Matrix<double, kImuErrorStateSize, kImuErrorStateSize> F;
     F.setZero(kImuErrorStateSize, kImuErrorStateSize);
-    F.block<3, 3>(kQErrorStateIndex, kQErrorStateIndex) = - w_skew;
-    F.block<3, 3>(kQErrorStateIndex, kBgErrorStateIndex)
+    F.block<3, 3>(kImuQErrorStateIndex, kImuQErrorStateIndex) = - w_skew;
+    F.block<3, 3>(kImuQErrorStateIndex, kImuBgErrorStateIndex)
         = - Eigen::Matrix3d::Identity();
     Matrix3d accel_skew =
         GeometricKit<double>::VectorToSkewSymmetricMatrix(accel_body);
-    F.block<3, 3>(kVErrorStateIndex, kQErrorStateIndex) =
+    F.block<3, 3>(kImuVErrorStateIndex, kImuQErrorStateIndex) =
         - I_R_G.transpose() * accel_skew;
-    F.block<3, 3>(kVErrorStateIndex, kBaErrorStateIndex) = - I_R_G.transpose();
-    F.block<3, 3>(kPErrorStateIndex, kVErrorStateIndex) =
+    F.block<3, 3>(kImuVErrorStateIndex, kImuBaErrorStateIndex) = - I_R_G.transpose();
+    F.block<3, 3>(kImuPErrorStateIndex, kImuVErrorStateIndex) =
         Eigen::Matrix3d::Identity();
 
     *state_transition_derivative = F * state_transition;
@@ -369,6 +394,10 @@ bool MsckfEstimator::ShouldVisualUpdate() {
   // not finish
 
   return false;
+
+}
+
+bool MsckfEstimator::EightPoint() {
 
 }
 
